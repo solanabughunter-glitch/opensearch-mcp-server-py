@@ -1,7 +1,6 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-from opensearchpy import OpenSearch
 from .client import client
 import json
 from typing import Any

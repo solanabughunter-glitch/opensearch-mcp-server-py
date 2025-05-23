@@ -30,7 +30,7 @@ class TestOpenSearchClient:
             'OPENSEARCH_USERNAME': 'user',
             'OPENSEARCH_PASSWORD': 'pass',
             'AWS_REGION': 'us-west-2',
-            'AWS_ACCESS_KEY': 'test-key',
+            'AWS_ACCESS_KEY_ID': 'test-key',
             'AWS_SECRET_ACCESS_KEY': 'test-secret',
             'AWS_SESSION_TOKEN': 'test-token'
         }

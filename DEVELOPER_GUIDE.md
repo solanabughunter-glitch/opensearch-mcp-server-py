@@ -68,7 +68,7 @@ uv sync
 
                 // For IAM Role Authentication
                 "AWS_REGION": "<your_aws_region>",
-                "AWS_ACCESS_KEY": "<your_aws_access_key>",
+                "AWS_ACCESS_KEY_ID": "<your_aws_access_key>",
                 "AWS_SECRET_ACCESS_KEY": "<your_aws_secret_access_key>",
                 "AWS_SESSION_TOKEN": "<your_aws_session_token>"
             }
