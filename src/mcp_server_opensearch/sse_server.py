@@ -54,6 +54,9 @@ class MCPStarletteApp:
                 self.mcp_server.create_initialization_options(),
             )
 
+        # Done to prevent 'NoneType' errors. For more details: https://github.com/modelcontextprotocol/python-sdk/blob/main/src/mcp/server/sse.py#L33-L37
+        return Response()
+
     async def handle_health(self, request: Request) -> Response:
         return Response("OK", status_code=200)
 
