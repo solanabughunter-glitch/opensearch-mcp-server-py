@@ -61,11 +61,9 @@ def initialize_client() -> OpenSearch:
         credentials = boto3.Session().get_credentials()
         if credentials:
             aws_auth = AWS4Auth(
-                credentials.access_key,
-                credentials.secret_key,
-                aws_region,
-                OPENSEARCH_SERVICE,
-                session_token=credentials.token
+                refreshable_credentials=credentials,
+                service=OPENSEARCH_SERVICE,
+                region=aws_region,
             )
             client_kwargs['http_auth'] = aws_auth
             return OpenSearch(**client_kwargs)
