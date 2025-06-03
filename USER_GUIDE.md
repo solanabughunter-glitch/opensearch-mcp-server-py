@@ -52,28 +52,7 @@ Install from PyPI:
 pip install opensearch-mcp-server-py
 ```
 
-## Configuration
-
-Authentication can be configured via either global environment variables or environment variables in agent MCP config file. Both Basic Authentication and IAM Authentication are supported.
-
-### Authentication Methods:
-- **Basic Authentication**
-```
-export OPENSEARCH_URL="<your_opensearch_domain_url>"
-export OPENSEARCH_USERNAME="<your_opensearch_domain_username>"
-export OPENSEARCH_PASSWORD="<your_opensearch_domain_password>"
-```
-
-- **IAM Role Authentication**
-```
-export OPENSEARCH_URL="<your_opensearch_domain_url>"
-export AWS_REGION="<your_aws_region>"
-export AWS_ACCESS_KEY_ID="<your_aws_access_key>"
-export AWS_SECRET_ACCESS_KEY="<your_aws_secret_access_key>"
-export AWS_SESSION_TOKEN="<your_aws_session_token>"
-```
-
-### Configuring authentication via MCP config file:
+### Sample configuration
 ```
 {
     "mcpServers": {
@@ -102,10 +81,28 @@ export AWS_SESSION_TOKEN="<your_aws_session_token>"
 }
 ```
 
-## Running the Server
+## Configuration
 
-Most agents should be able to run the command specified in the config file, so that it is not necessary to run the server independently. However, for use cases such as running a remote server via SSE, the below command will be needed to start the MCP server:
+Authentication can be configured via either global environment variables or environment variables in agent MCP config file. Both Basic Authentication and IAM Authentication are supported.
 
+### Authentication Methods:
+- **Basic Authentication**
+```
+export OPENSEARCH_URL="<your_opensearch_domain_url>"
+export OPENSEARCH_USERNAME="<your_opensearch_domain_username>"
+export OPENSEARCH_PASSWORD="<your_opensearch_domain_password>"
+```
+
+- **IAM Role Authentication**
+```
+export OPENSEARCH_URL="<your_opensearch_domain_url>"
+export AWS_REGION="<your_aws_region>"
+export AWS_ACCESS_KEY_ID="<your_aws_access_key>"
+export AWS_SECRET_ACCESS_KEY="<your_aws_secret_access_key>"
+export AWS_SESSION_TOKEN="<your_aws_session_token>"
+```
+
+### Running the Server:
 ```
 # Stdio Server
 python -m mcp_server_opensearch
