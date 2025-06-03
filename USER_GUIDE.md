@@ -2,7 +2,50 @@
 
 # OpenSearch-mcp-server-py User Guide
 
+## Quick Start
+
+Prerequisite: Install `uv` via `pip` or [standalone installer](https://github.com/astral-sh/uv?tab=readme-ov-file#installation):
+```
+pip install uv
+```
+
+The OpenSearch MCP server can be used via `uvx`, no installation required. Therefore, we just need to configure our AI agent of choice.
+
+For [Q Developer CLI](https://github.com/aws/amazon-q-developer-cli), configure `~/.aws/amazonq/mcp.json` with the below. See [here](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-mcp-configuration.html) for additional configuration options.
+
+For Claude Desktop, configure `claude_desktop_config.json` from Settings > Developer. See [here](https://modelcontextprotocol.io/quickstart/user#2-add-the-filesystem-mcp-server) for more details on using MCP with Claude Desktop.
+```
+{
+  "mcpServers": {
+    "opensearch-mcp-server": {
+      "command": "uvx",
+      "args": [
+        "opensearch-mcp-server-py"
+      ],
+      "env": {
+        // Required
+        "OPENSEARCH_URL": "<your_opensearch_domain_url>",
+
+        // For Basic Authentication
+        "OPENSEARCH_USERNAME": "<your_opensearch_domain_username>",
+        "OPENSEARCH_PASSWORD": "<your_opensearch_domain_password>",
+
+        // For IAM Role Authentication
+        "AWS_REGION": "<your_aws_region>",
+        "AWS_ACCESS_KEY_ID": "<your_aws_access_key>",
+        "AWS_SECRET_ACCESS_KEY": "<your_aws_secret_access_key>",
+        "AWS_SESSION_TOKEN": "<your_aws_session_token>"
+      }
+    }
+  }
+}
+```
+
+That's it! You are now ready to use your AI agent with OpenSearch tools.
+
 ## Installation
+
+Use the below steps if you would like to install `opensearch-mcp-server-py` locally.
 
 Install from PyPI:
 ```
@@ -10,6 +53,9 @@ pip install opensearch-mcp-server-py
 ```
 
 ## Configuration
+
+Authentication can be configured via either global environment variables or environment variables in agent MCP config file. Both Basic Authentication and IAM Authentication are supported.
+
 ### Authentication Methods:
 - **Basic Authentication**
 ```
@@ -27,45 +73,7 @@ export AWS_SECRET_ACCESS_KEY="<your_aws_secret_access_key>"
 export AWS_SESSION_TOKEN="<your_aws_session_token>"
 ```
 
-## Running the Server
-```
-# Stdio Server
-python -m mcp_server_opensearch
-
-# SSE Server
-python -m mcp_server_opensearch --transport sse
-```
-
-## Claude Desktop Integration
-- **Using the Published [PyPI Package](https://pypi.org/project/opensearch-mcp-server-py/) (Recommended)**
-```
-{
-    "mcpServers": {
-        "opensearch-mcp-server": {
-            "command": "uvx",
-            "args": [
-                "opensearch-mcp-server-py"
-            ],
-            "env": {
-                // Required
-                "OPENSEARCH_URL": "<your_opensearch_domain_url>",
-
-                // For Basic Authentication
-                "OPENSEARCH_USERNAME": "<your_opensearch_domain_username>",
-                "OPENSEARCH_PASSWORD": "<your_opensearch_domain_password>",
-
-                // For IAM Role Authentication
-                "AWS_REGION": "<your_aws_region>",
-                "AWS_ACCESS_KEY_ID": "<your_aws_access_key>",
-                "AWS_SECRET_ACCESS_KEY": "<your_aws_secret_access_key>",
-                "AWS_SESSION_TOKEN": "<your_aws_session_token>"
-            }
-        }
-    }
-}
-```
-
-- **Using the Installed Package (via pip):**
+### Configuring authentication via MCP config file:
 ```
 {
     "mcpServers": {
@@ -92,6 +100,18 @@ python -m mcp_server_opensearch --transport sse
         }
     }
 }
+```
+
+## Running the Server
+
+Most agents should be able to run the command specified in the config file, so that it is not necessary to run the server independently. However, for use cases such as running a remote server via SSE, the below command will be needed to start the MCP server:
+
+```
+# Stdio Server
+python -m mcp_server_opensearch
+
+# SSE Server
+python -m mcp_server_opensearch --transport sse
 ```
 
 ## LangChain Integration
