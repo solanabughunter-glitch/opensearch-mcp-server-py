@@ -4,7 +4,7 @@
 
 ## Quick Start
 
-###Prerequisite: 
+### Prerequisite: 
 Install `uv` via `pip` or [standalone installer](https://github.com/astral-sh/uv?tab=readme-ov-file#installation):
 ```
 pip install uv
