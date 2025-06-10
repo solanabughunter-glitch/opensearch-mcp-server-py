@@ -78,6 +78,10 @@ uv sync
                 "AWS_ACCESS_KEY_ID": "<your_aws_access_key>",
                 "AWS_SECRET_ACCESS_KEY": "<your_aws_secret_access_key>",
                 "AWS_SESSION_TOKEN": "<your_aws_session_token>"
+                
+                // For OpenSearch Serverless
+                "AWS_OPENSEARCH_SERVERLESS": "true",  // Set to "true" for OpenSearch Serverless
+
             }
         }
     }
