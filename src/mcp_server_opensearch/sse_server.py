@@ -11,31 +11,44 @@ from starlette.responses import Response
 from mcp.server.sse import SseServerTransport
 from mcp.server import Server
 from mcp.types import TextContent, Tool
-from tools.tools import TOOL_REGISTRY
+from tools.common import get_enabled_tools
+from opensearch.helper import get_opensearch_version
+
+import os
+import logging
+
 
 def create_mcp_server() -> Server:
     server = Server("opensearch-mcp-server")
+    opensearch_url = os.getenv("OPENSEARCH_URL", "https://localhost:9200")
+    version = get_opensearch_version(opensearch_url)
+    enabled_tools = get_enabled_tools(version)
+    logging.info(f"Connected OpenSearch version: {version}")
+    logging.info(f"Enabled tools: {list(enabled_tools.keys())}")
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
         tools = []
-        for tool_name, tool_info in TOOL_REGISTRY.items():
-            tools.append(Tool(
-                name=tool_name,
-                description=tool_info["description"],
-                inputSchema=tool_info["input_schema"]
-            ))
+        for tool_name, tool_info in enabled_tools.items():
+            tools.append(
+                Tool(
+                    name=tool_name,
+                    description=tool_info["description"],
+                    inputSchema=tool_info["input_schema"],
+                )
+            )
         return tools
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-        tool = TOOL_REGISTRY[name]
+        tool = enabled_tools.get(name)
         if not tool:
-            raise ValueError(f"Unknown tool: {name}")
+            raise ValueError(f"Unknown or disabled tool: {name}")
         parsed = tool["args_model"](**arguments)
         return await tool["function"](parsed)
 
     return server
+
 
 class MCPStarletteApp:
     def __init__(self, mcp_server: Server):
@@ -44,9 +57,9 @@ class MCPStarletteApp:
 
     async def handle_sse(self, request: Request) -> None:
         async with self.sse.connect_sse(
-                request.scope,
-                request.receive,
-                request._send,
+            request.scope,
+            request.receive,
+            request._send,
         ) as (read_stream, write_stream):
             await self.mcp_server.run(
                 read_stream,
@@ -69,11 +82,12 @@ class MCPStarletteApp:
             ]
         )
 
+
 async def serve(host: str = "0.0.0.0", port: int = 9900) -> None:
     mcp_server = create_mcp_server()
     app_handler = MCPStarletteApp(mcp_server)
     app = app_handler.create_app()
-    
+
     config = uvicorn.Config(
         app=app,
         host=host,
@@ -82,11 +96,13 @@ async def serve(host: str = "0.0.0.0", port: int = 9900) -> None:
     server = uvicorn.Server(config)
     await server.serve()
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run OpenSearch MCP SSE-based server')
-    parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
-    parser.add_argument('--port', type=int, default=9900, help='Port to listen on')
+    parser = argparse.ArgumentParser(description="Run OpenSearch MCP SSE-based server")
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
+    parser.add_argument("--port", type=int, default=9900, help="Port to listen on")
     args = parser.parse_args()
 
     import asyncio
+
     asyncio.run(serve(host=args.host, port=args.port))
