@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+import pytest_asyncio
 from unittest.mock import Mock, patch, AsyncMock
 from mcp.types import Tool, TextContent
 
@@ -30,8 +31,9 @@ class TestMCPServer:
             }
         }
 
+    @pytest.mark.asyncio
     @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
-    def test_create_mcp_server(self, mock_registry, mock_tool_registry):
+    async def test_create_mcp_server(self, mock_registry, mock_tool_registry):
         """Test MCP server creation"""
         # Setup mock registry
         mock_registry.items.return_value = mock_tool_registry.items()
@@ -39,7 +41,7 @@ class TestMCPServer:
         # Create server
         from mcp_server_opensearch.sse_server import create_mcp_server
 
-        server = create_mcp_server()
+        server = await create_mcp_server()
 
         assert server.name == "opensearch-mcp-server"
 
@@ -94,12 +96,12 @@ class TestMCPServer:
 
 
 class TestMCPStarletteApp:
-    @pytest.fixture
-    def app_handler(self):
+    @pytest_asyncio.fixture
+    async def app_handler(self):
         """Provides an MCPStarletteApp instance for testing"""
         from mcp_server_opensearch.sse_server import create_mcp_server, MCPStarletteApp
 
-        server = create_mcp_server()
+        server = await create_mcp_server()
         return MCPStarletteApp(server)
 
     def test_create_app(self, app_handler):

@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
-
+import os
+import logging
 import uvicorn
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -13,14 +14,17 @@ from mcp.server import Server
 from mcp.types import TextContent, Tool
 from tools.common import get_enabled_tools
 from opensearch.helper import get_opensearch_version
+from tools.tool_generator import generate_tools_from_openapi
+from opensearch.client import initialize_client
 
-import os
-import logging
-
-
-def create_mcp_server() -> Server:
+async def create_mcp_server() -> Server:
     server = Server("opensearch-mcp-server")
     opensearch_url = os.getenv("OPENSEARCH_URL", "https://localhost:9200")
+
+    # Call tool generator
+    await generate_tools_from_openapi(initialize_client(opensearch_url))
+
+    # Filter all tools by version
     version = get_opensearch_version(opensearch_url)
     enabled_tools = get_enabled_tools(version)
     logging.info(f"Connected OpenSearch version: {version}")
@@ -84,7 +88,7 @@ class MCPStarletteApp:
 
 
 async def serve(host: str = "0.0.0.0", port: int = 9900) -> None:
-    mcp_server = create_mcp_server()
+    mcp_server = await create_mcp_server()
     app_handler = MCPStarletteApp(mcp_server)
     app = app_handler.create_app()
 
