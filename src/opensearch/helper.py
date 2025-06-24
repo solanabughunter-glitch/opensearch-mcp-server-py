@@ -45,8 +45,8 @@ def get_opensearch_version(client: OpenSearch, is_serverless: bool) -> Version:
         Version: The version of OpenSearch cluster (SemVer style)
     """
     if is_serverless:
-        version ="99.99.99"
+        return Version.parse("2.11.1")
     else:
         response = client.info()
-        version = Version.parse(response["version"]["number"])
-    return version
+        return Version.parse(response["version"]["number"])
+    return Version.parse("2.11.1")
