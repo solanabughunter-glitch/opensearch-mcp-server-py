@@ -252,3 +252,186 @@ class TestGetTools:
 
             # Should log version information
             assert 'Connected OpenSearch version: 2.5.0' in caplog.text
+
+
+class TestProcessToolFilter:
+    def setup_method(self):
+        """Setup that runs before each test method."""
+        # Tool registry with http methods
+        tool_registry = {
+            'ListIndexTool': {'http_methods': 'GET'},
+            'ClusterHealthTool': {'http_methods': 'GET'},
+            'SearchIndexTool': {'http_methods': 'GET, POST'},
+            'IndicesCreateTool': {'http_methods': 'PUT'},
+            'ExplainTool': {'http_methods': 'GET, POST'},
+            'MsearchTool': {'http_methods': 'GET, POST'},
+        }
+
+        # Tool registry (case insensitive)
+        tool_registry_lower = {
+            'listindextool': 'ListIndexTool',
+            'searchindextool': 'SearchIndexTool',
+            'getmappingtool': 'GetMappingTool',
+        }
+
+        from tools.tool_filter import (
+            parse_comma_separated,
+            load_yaml_config,
+            process_categories,
+            process_regex_patterns,
+            validate_tools,
+            apply_write_filter,
+            process_tool_filter,
+        )
+
+        self.tool_registry = tool_registry
+        self.tool_registry_lower = tool_registry_lower
+        self.parse_comma_separated = parse_comma_separated
+        self.load_yaml_config = load_yaml_config
+        self.process_categories = process_categories
+        self.process_regex_patterns = process_regex_patterns
+        self.validate_tools = validate_tools
+        self.apply_write_filter = apply_write_filter
+        self.process_tool_filter = process_tool_filter
+
+    def test_parse_comma_separated(self):
+        """Test that comma separated values are parsed correctly."""
+        assert self.parse_comma_separated('a,b,c') == ['a', 'b', 'c']
+        assert self.parse_comma_separated('a') == ['a']
+        assert self.parse_comma_separated('') == []
+        assert self.parse_comma_separated(None) == []
+
+    def test_load_valid_yaml_config(self):
+        """Test loading a valid yaml config."""
+        config = self.load_yaml_config('tests/tools/test_config.yml')
+        assert config == {
+            'tool_category': {'critical': ['SearchIndexTool', 'ExplainTool']},
+            'tool_filters': {
+                'disabled_categories': ['critical'],
+                'disabled_tools': ['MsearchTool'],
+            },
+        }
+
+    def test_load_invalid_yaml_config(self, caplog):
+        """Test loading an invalid yaml config."""
+        config = self.load_yaml_config('tests/tools/test_invalid_config.yml')
+        assert config is None
+        assert 'Error loading filter config' in caplog.text
+
+    def test_process_valid_categories(self):
+        """Test that valid categories are processed correctly."""
+        config = self.load_yaml_config('tests/tools/test_config.yml')
+        tool_category = config.get('tool_category', {})
+        categories = ['critical']
+        process_categories = self.process_categories(categories, tool_category)
+        assert process_categories == ['SearchIndexTool', 'ExplainTool']
+
+    def test_process_invalid_categories(self, caplog):
+        """Test processing invalid category."""
+        config = self.load_yaml_config('tests/tools/test_config.yml')
+        tool_category = config.get('tool_category', {})
+        categories = ['invalid']
+        process_categories = self.process_categories(categories, tool_category)
+        assert process_categories == []
+        assert "Category 'invalid' not found in tool categories" in caplog.text
+
+    def test_process_regex_patterns(self):
+        """Test processing regex patterns."""
+        regex_patterns = ['search.*', 'Get.*']
+        tool_names = ['ListIndexTool', 'GetMappingTool', 'SearchTool', 'DeleteTool']
+        matching_tools = self.process_regex_patterns(regex_patterns, tool_names)
+
+        assert 'ListIndexTool' not in matching_tools  # Doesn't match either pattern
+        assert 'GetMappingTool' in matching_tools  # Matches Get.*
+        assert 'SearchTool' in matching_tools  # Matches search.*
+        assert 'DeleteTool' not in matching_tools  # Doesn't match either pattern
+        assert len(matching_tools) == 2
+
+    def test_validate_valid_tools(self):
+        """Test validating valid tools."""
+        tool_list = ['ListIndexTool', 'SearchIndexTool']
+        source_name = 'disabled_tools'
+        valid_tools = self.validate_tools(tool_list, self.tool_registry_lower, source_name)
+        assert 'listindextool' in valid_tools
+        assert 'searchindextool' in valid_tools
+
+        # Test case insensitivity
+        tool_list = ['GetMappingTool', 'SEARCHINDEXTOOL']
+        valid_tools = self.validate_tools(tool_list, self.tool_registry_lower, source_name)
+        assert 'getmappingtool' in valid_tools
+        assert 'searchindextool' in valid_tools
+
+    def test_validate_invalid_tools(self, caplog):
+        """Test validating invalid tools."""
+        tool_list = ['InvalidTool', 'exampletool']
+        source_name = 'disabled_tools'
+        valid_tools = self.validate_tools(tool_list, self.tool_registry_lower, source_name)
+        assert valid_tools == set()
+        assert "Ignoring invalid tool from 'disabled_tools': 'InvalidTool'" in caplog.text
+        assert "Ignoring invalid tool from 'disabled_tools': 'exampletool'" in caplog.text
+
+    def test_apply_write_filter(self, monkeypatch):
+        """Test that apply write filter are applied correctly."""
+        tool_registry_copy = self.tool_registry.copy()
+
+        monkeypatch.setenv('OPENSEARCH_SETTINGS_ALLOW_WRITE', False)
+        self.apply_write_filter(tool_registry_copy)
+        assert 'ListIndexTool' in tool_registry_copy
+        assert 'SearchIndexTool' in tool_registry_copy
+        assert 'IndicesCreateTool' not in tool_registry_copy
+
+    def test_process_tool_filter_config(self, monkeypatch, caplog):
+        """Test processing tool filter from a YAML config file."""
+        # Set the log level to capture all messages
+        import logging
+
+        caplog.set_level(logging.INFO)
+
+        # Patch the TOOL_REGISTRY in the tool_filter module
+        tool_registry_copy = self.tool_registry.copy()
+        monkeypatch.setattr('tools.tool_filter.TOOL_REGISTRY', tool_registry_copy)
+
+        # Call the function with the config file
+        self.process_tool_filter(filter_path='tests/tools/test_config.yml')
+
+        # Check the results
+        assert 'ClusterHealthTool' in tool_registry_copy
+        assert 'ListIndexTool' in tool_registry_copy
+        assert 'MsearchTool' not in tool_registry_copy  # In disabled_tools
+        assert 'SearchIndexTool' not in tool_registry_copy  # In critical category
+        assert 'ExplainTool' not in tool_registry_copy  # In critical category
+
+        # Check that the right log messages were produced
+        assert 'Applied tool filter from tests/tools/test_config.yml' in caplog.text
+
+    def test_process_tool_filter_env(self, monkeypatch, caplog):
+        """Test processing tool filter from environment variables."""
+        # Set the log level to capture all messages
+        import logging
+
+        caplog.set_level(logging.INFO)
+
+        # Patch the TOOL_REGISTRY in the tool_filter module
+        tool_registry_copy = self.tool_registry.copy()
+        monkeypatch.setattr('tools.tool_filter.TOOL_REGISTRY', tool_registry_copy)
+
+        # Set environment variables via monkeypatch
+        monkeypatch.setenv('OPENSEARCH_DISABLED_TOOLS', 'ExplainTool')
+        monkeypatch.setenv('OPENSEARCH_DISABLED_TOOLS_REGEX', 'search.*')
+        monkeypatch.setenv('OPENSEARCH_SETTINGS_ALLOW_WRITE', True)
+
+        # Call the function with environment variables
+        self.process_tool_filter(
+            disabled_tools='ExplainTool', disabled_tools_regex='search.*', allow_write=True
+        )
+
+        # Check the results
+        assert 'ListIndexTool' in tool_registry_copy
+        assert 'ClusterHealthTool' in tool_registry_copy
+        assert 'IndicesCreateTool' in tool_registry_copy
+        assert 'MsearchTool' in tool_registry_copy
+        assert 'SearchIndexTool' not in tool_registry_copy  # In disabled_tools_regex
+        assert 'ExplainTool' not in tool_registry_copy  # In disabled_tools
+
+        # Check that the right log messages were produced
+        assert 'Applied tool filter from environment variables' in caplog.text

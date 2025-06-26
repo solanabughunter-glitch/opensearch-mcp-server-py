@@ -9,6 +9,7 @@
 - [Server Modes](#server-modes)
 - [Authentication](#authentication)
 - [Running the Server](#running-the-server)
+- [Tool Filter](#tool-filter)
 - [LangChain Integration](#langchain-integration)
 
 ## Overview
@@ -315,6 +316,68 @@ python -m mcp_server_opensearch --mode multi --config clusters.yml --profile my-
 # Fallback to single mode behavior (no config file)
 python -m mcp_server_opensearch --mode multi
 ```
+
+## Tool Filter
+
+OpenSearch MCP server supports tool filtering to disable specific tools by name, category, or operation type. You can configure filtering using either a YAML configuration file or environment variables.
+
+### Configuration Methods
+
+1. YAML Configuration File
+
+Create a YAML file with your tool filtering configuration:
+```yaml
+# Define custom tool categories
+tool_category:
+  <category_name>:
+    - <tool_name>
+
+# Configure tool filters
+tool_filters:
+  disabled_tools:
+    - <tool_name_to_disable>
+  disabled_categories:
+    - <category_name_to_disable>
+  disabled_tools_regex:
+    - <regex_pattern_to_disable>  # (e.g., search.*)
+  settings:
+    allow_write: true  # Enable/disable write-only operations
+```
+
+To use your configuration file, start the server with the `--config` flag:
+
+```bash
+# Run stdio server with tool filter config file
+python -m mcp_server_opensearch --config path/to/config.yml
+
+# Run SSE server with tool filter config file
+python -m mcp_server_opensearch --transport sse --config path/to/config.yml
+```
+
+2. Environment Variables
+
+Set environment variables for tool filtering:
+```bash
+# Tool Categories
+export OPENSEARCH_TOOL_CATEGORIES='{"<name_of_category>":["<tool_name>","<tool_name>"]}'
+
+# Disable Specific Tools
+export OPENSEARCH_DISABLED_TOOLS="<tool_name>"
+
+# Disable Categories
+export OPENSEARCH_DISABLED_CATEGORIES="<category_name>"
+
+# Regex Pattern
+export OPENSEARCH_DISABLED_TOOLS_REGEX="<regex_pattern>"
+
+# Operation Settings
+export OPENSEARCH_SETTINGS_ALLOW_WRITE=true
+```
+
+### Important Notes
+- Tool names are case-insensitive
+- All configuration fields are optional
+- When both config file and environment variables are provided, the config file will be prioritized
 
 ## LangChain Integration
 
