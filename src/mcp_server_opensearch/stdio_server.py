@@ -22,7 +22,7 @@ async def serve() -> None:
     await generate_tools_from_openapi(client)
 
     # Filter all tools by version
-    version = get_opensearch_version(client,is_serverless)
+    version = get_opensearch_version(client, is_serverless)
     enabled_tools = get_enabled_tools(version)
     logging.info(f"Connected OpenSearch version: {version}")
     logging.info(f"Enabled tools: {list(enabled_tools.keys())}")
