@@ -81,7 +81,7 @@ def initialize_client_with_cluster(cluster_info: ClusterInfo = None) -> OpenSear
     client_kwargs: Dict[str, Any] = {
         'hosts': [opensearch_url],
         'use_ssl': (parsed_url.scheme == 'https'),
-        'verify_certs': True,
+        'verify_certs': os.getenv('OPENSEARCH_SSL_VERIFY', 'true').lower() != 'false',
         'connection_class': RequestsHttpConnection,
     }
 
