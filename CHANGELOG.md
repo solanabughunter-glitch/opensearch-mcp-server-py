@@ -2,7 +2,13 @@
 
 Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
+## [Released 0.2.2]
+
+### Fixed
+- Fix endpoint selection bug in ClusterHealthTool and CountTool ([#59](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/59))
+- Fix Serverless issues ([#61](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/61))
+
+## [Released 0.2.0]
 
 ### Added
 - Add OpenSearch URl as an optional parameter for tool calls ([#20](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/20))
@@ -21,5 +27,3 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fix OpenSearch client to use refreshable credentials ([#13](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/13))
 - fix publish release ci and bump version on main ([#49](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/49))
 - fix OpenAPI tools schema, handle NDJSON ([#52](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/52))
-- Fix endpoint selection bug in ClusterHealthTool and CountTool ([#59](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/59))
-- Fix Serverless issues ([#61](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/61))
