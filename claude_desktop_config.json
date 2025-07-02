@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "opensearch-fort": {
+      "command": "python",
+      "args": ["-m", "mcp_server_opensearch", "--config", "fort_config.yml"],
+      "cwd": "E:\\Work\\Pet Proj repos\\opensearch-mcp-server-py",
+      "env": {
+        "PYTHONPATH": "E:\\Work\\Pet Proj repos\\opensearch-mcp-server-py\\src"
+      }
+    }
+  }
+} 

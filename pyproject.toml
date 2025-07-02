@@ -1,7 +1,7 @@
 [project]
 name = "opensearch-mcp-server-py"
-version = "0.3.0"
-description = "Add your description here"
+version = "0.3.1-dashboards"
+description = "OpenSearch MCP Server с поддержкой Dashboards API - форк с дополнительной функциональностью для подключения через OpenSearch Dashboards"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -76,10 +76,11 @@ docstring-code-format = true
 
 [project.scripts]
 opensearch-mcp-server-py = "mcp_server_opensearch:main"  # Importable path
+mcp-server-opensearch = "mcp_server_opensearch.__main__:main"  # Entry point for uv
 
 [project.urls]
-Homepage = "https://github.com/opensearch-project/opensearch-mcp-server-py"
-Documentation = "https://github.com/opensearch-project/opensearch-mcp-server-py/blob/main/USER_GUIDE.md"
-Source = "https://github.com/opensearch-project/opensearch-mcp-server-py.git"
-"Bug Tracker" = "https://github.com/opensearch-project/opensearch-mcp-server-py/issues"
+Homepage = "https://github.com/VladMain/opensearch-mcp-server-py"
+Documentation = "https://github.com/VladMain/opensearch-mcp-server-py/blob/main/QUICK_START.md"
+Source = "https://github.com/VladMain/opensearch-mcp-server-py.git"
+"Bug Tracker" = "https://github.com/VladMain/opensearch-mcp-server-py/issues"
 Changelog = "https://github.com/opensearch-project/opensearch-mcp-server-py/blob/main/CHANGELOG.md"

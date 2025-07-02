@@ -174,8 +174,21 @@ def get_tools(mode: str = 'single', config: str = '') -> dict:
     enabled = {}
 
     # Get OpenSearch version for compatibility checking (only in single mode)
-    version = get_opensearch_version(baseToolArgs())
-    logging.info(f'Connected OpenSearch version: {version}')
+    # Use the first available cluster from the config
+    from mcp_server_opensearch.clusters_information import cluster_registry
+    
+    cluster_names = list(cluster_registry.keys())
+    if cluster_names:
+        # Use the first available cluster for version checking
+        base_args = baseToolArgs()
+        base_args.opensearch_cluster_name = cluster_names[0]
+        version = get_opensearch_version(base_args)
+        logging.info(f'Connected OpenSearch version: {version}')
+    else:
+        # Fallback to a default version if no clusters are available
+        from semver import Version
+        version = Version.parse('2.11.0')
+        logging.warning('No clusters available, using default version 2.11.0')
 
     # Get environment variables for tool filtering
     env_config = {

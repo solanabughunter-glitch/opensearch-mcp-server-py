@@ -1,0 +1,11 @@
+version: "1.0"
+description: "OpenSearch cluster configuration for fort-elkdev.gearwap.ru"
+
+clusters:
+  # Ваш рабочий кластер OpenSearch через Dashboards
+  fort-elkdev:
+    opensearch_url: "https://fort-elkdev.gearwap.ru"
+    opensearch_username: "pophadze"
+    opensearch_password: "mynameistoizy95"
+    # Используем Dashboards API вместо прямого OpenSearch API
+    use_dashboards_api: true 

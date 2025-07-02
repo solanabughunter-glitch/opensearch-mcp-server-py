@@ -6,6 +6,7 @@ import logging
 import os
 from mcp_server_opensearch.clusters_information import ClusterInfo, get_cluster
 from opensearchpy import OpenSearch, RequestsHttpConnection
+from opensearch.dashboards_client import OpenSearchDashboardsClient
 from requests_aws4auth import AWS4Auth
 from tools.tool_params import baseToolArgs
 from typing import Any, Dict
@@ -60,8 +61,9 @@ def initialize_client_with_cluster(cluster_info: ClusterInfo = None) -> OpenSear
     """Initialize and return an OpenSearch client with appropriate authentication.
 
     The function attempts to authenticate in the following order:
-    1. Basic authentication using OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD
-    2. AWS IAM authentication using boto3 credentials
+    1. Check if Dashboards API mode is enabled (use_dashboards_api)
+    2. Basic authentication using OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD
+    3. AWS IAM authentication using boto3 credentials
        - Uses 'aoss' service name if OPENSEARCH_SERVERLESS=true
        - Uses 'es' service name otherwise
 
@@ -69,7 +71,7 @@ def initialize_client_with_cluster(cluster_info: ClusterInfo = None) -> OpenSear
         cluster_info (ClusterInfo): Cluster information object containing authentication and connection details
 
     Returns:
-        OpenSearch: An initialized OpenSearch client instance.
+        OpenSearch: An initialized OpenSearch client instance (or DashboardsClient wrapper).
 
     Raises:
         ValueError: If opensearch_url is empty or invalid
@@ -94,15 +96,31 @@ def initialize_client_with_cluster(cluster_info: ClusterInfo = None) -> OpenSear
     if not profile:
         profile = os.getenv('AWS_PROFILE', '')
 
+    # Parse the OpenSearch domain URL
+    parsed_url = urlparse(opensearch_url)
+
+    # Check if using Dashboards API mode
+    use_dashboards_api = getattr(cluster_info, 'use_dashboards_api', False) if cluster_info else False
+    
+    if use_dashboards_api:
+        logger.info('Using OpenSearch Dashboards API mode')
+        # Use our custom Dashboards client
+        if opensearch_username and opensearch_password:
+            return OpenSearchDashboardsClient(
+                hosts=opensearch_url,
+                http_auth=(opensearch_username, opensearch_password),
+                use_ssl=(parsed_url.scheme == 'https'),
+                verify_certs=os.getenv('OPENSEARCH_SSL_VERIFY', 'true').lower() != 'false'
+            )
+        else:
+            raise RuntimeError('Dashboards API mode requires username and password')
+
     # Check if using OpenSearch Serverless
     is_serverless_mode = is_serverless(cluster_info)
     service_name = OPENSEARCH_SERVERLESS_SERVICE if is_serverless_mode else OPENSEARCH_SERVICE
 
     if is_serverless_mode:
         logger.info('Using OpenSearch Serverless with service name: aoss')
-
-    # Parse the OpenSearch domain URL
-    parsed_url = urlparse(opensearch_url)
 
     # Common client configuration
     client_kwargs: Dict[str, Any] = {

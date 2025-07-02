@@ -1,6 +1,11 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-from . import main
+from . import main as _main
 
-main()
+def main():
+    """Entry point for uv script"""
+    return _main()
+
+if __name__ == "__main__":
+    main()
