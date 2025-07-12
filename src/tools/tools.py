@@ -36,7 +36,9 @@ async def list_indices_tool(args: ListIndicesArgs) -> list[dict]:
         if args.index:
             index_info = get_index(args)
             formatted_info = json.dumps(index_info, indent=2)
-            return [{'type': 'text', 'text': f'Index information for {args.index}:\n{formatted_info}'}]
+            return [
+                {'type': 'text', 'text': f'Index information for {args.index}:\n{formatted_info}'}
+            ]
 
         # Otherwise, list all indices with full information
         indices = list_indices(args)
@@ -103,6 +105,7 @@ async def get_shards_tool(args: GetShardsArgs) -> list[dict]:
 # Registry of available OpenSearch tools with their metadata
 TOOL_REGISTRY = {
     'ListIndexTool': {
+        'display_name': 'ListIndexTool',
         'description': 'Lists all indices in the OpenSearch cluster with full information including docs.count, docs.deleted, store.size, etc. If an index parameter is provided, returns detailed information about that specific index.',
         'input_schema': ListIndicesArgs.model_json_schema(),
         'function': list_indices_tool,
@@ -111,6 +114,7 @@ TOOL_REGISTRY = {
         'http_methods': 'GET',
     },
     'IndexMappingTool': {
+        'display_name': 'IndexMappingTool',
         'description': 'Retrieves index mapping and setting information for an index in OpenSearch',
         'input_schema': GetIndexMappingArgs.model_json_schema(),
         'function': get_index_mapping_tool,
@@ -118,6 +122,7 @@ TOOL_REGISTRY = {
         'http_methods': 'GET',
     },
     'SearchIndexTool': {
+        'display_name': 'SearchIndexTool',
         'description': 'Searches an index using a query written in query domain-specific language (DSL) in OpenSearch',
         'input_schema': SearchIndexArgs.model_json_schema(),
         'function': search_index_tool,
@@ -125,6 +130,7 @@ TOOL_REGISTRY = {
         'http_methods': 'GET, POST',
     },
     'GetShardsTool': {
+        'display_name': 'GetShardsTool',
         'description': 'Gets information about shards in OpenSearch',
         'input_schema': GetShardsArgs.model_json_schema(),
         'function': get_shards_tool,

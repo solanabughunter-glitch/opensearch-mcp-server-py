@@ -53,6 +53,7 @@ def process_tool_filter(
     disabled_tools_regex: str = None,
     allow_write: bool = None,
     filter_path: str = None,
+    tool_registry: dict = None,
 ) -> None:
     """Process tool filter configuration from a YAML file and environment variables.
 
@@ -63,10 +64,11 @@ def process_tool_filter(
         disabled_tools_regex: Comma-separated list of disabled tools regex
         allow_write: If True, allow tools with PUT/POST methods
         filter_path: Path to the YAML filter configuration file
+        tool_registry: The tool registry to filter.
     """
     try:
         # Create case-insensitive lookup
-        tool_registry_lower = {k.lower(): k for k in TOOL_REGISTRY.keys()}
+        tool_registry_lower = {k.lower(): k for k in tool_registry.keys()}
 
         # Initialize collections
         category_to_tools = {}
@@ -110,7 +112,7 @@ def process_tool_filter(
 
         # Apply allow_write filter first
         if not allow_write:
-            apply_write_filter(TOOL_REGISTRY)
+            apply_write_filter(tool_registry)
 
         # Process tools from categories and regex patterns
         disabled_tools_from_categories = process_categories(
@@ -118,7 +120,7 @@ def process_tool_filter(
         )
 
         # Get current tool names after allow_write filtering
-        current_tool_names = list(TOOL_REGISTRY.keys())
+        current_tool_names = list(tool_registry.keys())
         disabled_tools_from_regex = process_regex_patterns(
             disabled_tools_regex_list, current_tool_names
         )
@@ -142,34 +144,36 @@ def process_tool_filter(
             )
 
             # Remove tools in the disabled list
-            for tool_name in list(TOOL_REGISTRY.keys()):
+            for tool_name in list(tool_registry.keys()):
                 if tool_name.lower() in all_disabled_tools:
-                    TOOL_REGISTRY.pop(tool_name, None)
+                    tool_registry.pop(tool_name, None)
 
         # Log results
         source = filter_path if filter_path else 'environment variables'
         logging.info(f'Applied tool filter from {source}')
-        logging.info(f'Available tools after filtering: {list(TOOL_REGISTRY.keys())}')
+        logging.info(f'Available tools after filtering: {list(tool_registry.keys())}')
 
     except Exception as e:
         logging.error(f'Error processing tool filter: {str(e)}')
 
 
-def get_tools(mode: str = 'single', config: str = '') -> dict:
+def get_tools(tool_registry: dict, mode: str = 'single', config_file_path: str = '') -> dict:
     """Filter and return available tools based on server mode and OpenSearch version.
 
     In 'multi' mode, returns all tools without filtering. In 'single' mode, filters tools
     based on OpenSearch version compatibility and removes base tool arguments from schemas.
 
     Args:
+        tool_registry (dict): The tool registry to filter.
         mode (str): Server mode - 'single' for version-filtered tools, 'multi' for all tools
+        config_file_path (str): Path to a YAML configuration file
 
     Returns:
         dict: Dictionary of enabled tools with their configurations
     """
     # In multi mode, return all tools without any filtering
     if mode == 'multi':
-        return TOOL_REGISTRY
+        return tool_registry
 
     enabled = {}
 
@@ -187,13 +191,14 @@ def get_tools(mode: str = 'single', config: str = '') -> dict:
     }
 
     # Check if both config and env variables are set
-    if config and any(env_config.values()):
+    if config_file_path and any(env_config.values()):
         logging.warning('Both config file and environment variables are set. Using config file.')
 
     # Apply tool filtering, update the TOOL_REGISTRY
     process_tool_filter(
-        filter_path=config if config else None,
-        **{k: v for k, v in env_config.items() if not config},
+        tool_registry=tool_registry,
+        filter_path=config_file_path if config_file_path else None,
+        **{k: v for k, v in env_config.items() if not config_file_path},
     )
 
     for name, info in TOOL_REGISTRY.items():

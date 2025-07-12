@@ -1,8 +1,29 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
+import argparse
+import asyncio
+import logging
+from typing import Dict, List
+
 from .stdio_server import serve as serve_stdio
 from .streaming_server import serve as serve_streaming
+
+
+def parse_unknown_args_to_dict(unknown_args: List[str]) -> Dict[str, str]:
+    """Parses a list of unknown arguments into a dictionary."""
+    parser = argparse.ArgumentParser()
+    arg_keys = {arg.split('=')[0] for arg in unknown_args if arg.startswith('--')}
+
+    for key in arg_keys:
+        parser.add_argument(key)
+
+    try:
+        parsed_args, _ = parser.parse_known_args(unknown_args)
+        return {k: v for k, v in vars(parsed_args).items() if v is not None}
+    except Exception as e:
+        logging.error(f"Error parsing unknown arguments: {e}")
+        return {}
 
 
 def main() -> None:
@@ -10,10 +31,6 @@ def main() -> None:
     Main entry point for the OpenSearch MCP Server.
     Handles command line arguments and starts the appropriate server based on transport type.
     """
-    import argparse
-    import asyncio
-    import logging
-
     # Configure logging
     logging.basicConfig(
         level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -43,13 +60,26 @@ def main() -> None:
     parser.add_argument(
         '--profile', default='', help='AWS profile to use for OpenSearch connection'
     )
-    parser.add_argument('--config', default='', help='Path to a YAML configuration file')
+    parser.add_argument(
+        '--config',
+        dest='config_file_path',
+        default='',
+        help='Path to a YAML configuration file',
+    )
 
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    cli_tool_overrides = parse_unknown_args_to_dict(unknown)
 
     # Start the appropriate server based on transport type
     if args.transport == 'stdio':
-        asyncio.run(serve_stdio(mode=args.mode, profile=args.profile, config=args.config))
+        asyncio.run(
+            serve_stdio(
+                mode=args.mode,
+                profile=args.profile,
+                config_file_path=args.config_file_path,
+                cli_tool_overrides=cli_tool_overrides,
+            )
+        )
     else:
         asyncio.run(
             serve_streaming(
@@ -57,7 +87,8 @@ def main() -> None:
                 port=args.port,
                 mode=args.mode,
                 profile=args.profile,
-                config=args.config,
+                config_file_path=args.config_file_path,
+                cli_tool_overrides=cli_tool_overrides,
             )
         )
 

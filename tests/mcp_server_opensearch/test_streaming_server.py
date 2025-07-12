@@ -4,7 +4,7 @@
 import pytest
 import pytest_asyncio
 from mcp.types import TextContent
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch, MagicMock, ANY
 
 
 @pytest.fixture(autouse=True)
@@ -34,26 +34,40 @@ class TestMCPServer:
         }
 
     @pytest.mark.asyncio
+    @patch('mcp_server_opensearch.streaming_server.apply_custom_tool_config')
     @patch('mcp_server_opensearch.streaming_server.get_tools')
     @patch('mcp_server_opensearch.streaming_server.generate_tools_from_openapi')
     @patch('mcp_server_opensearch.streaming_server.load_clusters_from_yaml')
     async def test_create_mcp_server(
-        self, mock_load_clusters, mock_generate_tools, mock_get_tools, mock_tool_registry
+        self,
+        mock_load_clusters,
+        mock_generate_tools,
+        mock_get_tools,
+        mock_apply_config,
+        mock_tool_registry,
     ):
         """Test MCP server creation."""
         # Setup mocks
         mock_get_tools.return_value = mock_tool_registry
+        mock_apply_config.return_value = mock_tool_registry  # Assume no changes for this test
         mock_generate_tools.return_value = None
         mock_load_clusters.return_value = None
 
         # Create server
         from mcp_server_opensearch.streaming_server import create_mcp_server
 
-        server = await create_mcp_server()
+        server = await create_mcp_server(
+            mode='single', config_file_path='some/path', cli_tool_overrides={'key': 'val'}
+        )
 
         assert server.name == 'opensearch-mcp-server'
         mock_generate_tools.assert_called_once()
-        mock_get_tools.assert_called_once_with('single', '')
+        mock_apply_config.assert_called_once_with(ANY, 'some/path', {'key': 'val'})
+        mock_get_tools.assert_called_once_with(
+            tool_registry=mock_tool_registry,
+            mode='single',
+            config_file_path='some/path',
+        )
 
     @pytest.mark.asyncio
     @patch('mcp_server_opensearch.streaming_server.get_tools')

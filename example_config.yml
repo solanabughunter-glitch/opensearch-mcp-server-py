@@ -1,0 +1,8 @@
+tools:
+  ListIndexTool:
+    display_name: "My Custom Index Lister"
+    description: "This is a custom description for the tool that lists indices. It's much more descriptive now!"
+  SearchIndexTool:
+    display_name: "Super Searcher"
+  GetShardsTool:
+    description: "A better description to get information about shards in OpenSearch."

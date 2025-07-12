@@ -17,9 +17,16 @@ from tools.tool_filter import get_tools
 from tools.tool_generator import generate_tools_from_openapi
 from starlette.types import Scope, Receive, Send
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+from tools.tools import TOOL_REGISTRY
+from tools.config import apply_custom_tool_config
 
 
-async def create_mcp_server(mode: str = 'single', profile: str = '', config: str = '') -> Server:
+async def create_mcp_server(
+    mode: str = 'single',
+    profile: str = '',
+    config_file_path: str = '',
+    cli_tool_overrides: dict = None,
+) -> Server:
     # Set the global profile if provided
     if profile:
         from opensearch.client import set_profile
@@ -28,12 +35,17 @@ async def create_mcp_server(mode: str = 'single', profile: str = '', config: str
 
     # Load clusters from YAML file
     if mode == 'multi':
-        load_clusters_from_yaml(config)
+        load_clusters_from_yaml(config_file_path)
 
     server = Server('opensearch-mcp-server')
     # Call tool generator and tool fitler
     await generate_tools_from_openapi()
-    enabled_tools = get_tools(mode, config)
+    customized_registry = apply_custom_tool_config(
+        TOOL_REGISTRY, config_file_path, cli_tool_overrides or {}
+    )
+    enabled_tools = get_tools(
+        tool_registry=customized_registry, mode=mode, config_file_path=config_file_path
+    )
     logging.info(f'Enabled tools: {list(enabled_tools.keys())}')
 
     @server.list_tools()
@@ -42,7 +54,7 @@ async def create_mcp_server(mode: str = 'single', profile: str = '', config: str
         for tool_name, tool_info in enabled_tools.items():
             tools.append(
                 Tool(
-                    name=tool_name,
+                    name=tool_info.get('display_name', tool_name),
                     description=tool_info['description'],
                     inputSchema=tool_info['input_schema'],
                 )
@@ -51,9 +63,17 @@ async def create_mcp_server(mode: str = 'single', profile: str = '', config: str
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-        tool = enabled_tools.get(name)
-        if not tool:
+        # Find the tool by its display name, which is what the client sees
+        found_tool_key = None
+        for key, tool_info in enabled_tools.items():
+            if tool_info.get('display_name', key) == name:
+                found_tool_key = key
+                break
+
+        if not found_tool_key:
             raise ValueError(f'Unknown or disabled tool: {name}')
+
+        tool = enabled_tools.get(found_tool_key)
         parsed = tool['args_model'](**arguments)
         return await tool['function'](parsed)
 
@@ -123,9 +143,12 @@ async def serve(
     port: int = 9900,
     mode: str = 'single',
     profile: str = '',
-    config: str = '',
+    config_file_path: str = '',
+    cli_tool_overrides: dict = None,
 ) -> None:
-    mcp_server = await create_mcp_server(mode, profile, config)
+    mcp_server = await create_mcp_server(
+        mode, profile, config_file_path, cli_tool_overrides
+    )
     app_handler = MCPStarletteApp(mcp_server)
     app = app_handler.create_app()
 
