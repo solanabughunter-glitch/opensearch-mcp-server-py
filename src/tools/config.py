@@ -38,7 +38,13 @@ def apply_custom_tool_config(
             if 'display_name' in custom_config:
                 custom_registry[tool_id]['display_name'] = custom_config['display_name']
             if 'description' in custom_config:
-                custom_registry[tool_id]['description'] = custom_config['description']
+                description = custom_config['description']
+                if len(description) > 1024:
+                    logging.warning(
+                        f"Warning: The description for tool '{tool_id}' exceeds 1024 characters ({len(description)}). "
+                        f"Some LLM models may not support long descriptions."
+                    )
+                custom_registry[tool_id]['description'] = description
 
     # Apply config from command line arguments (overrides file config)
     for arg, value in cli_tool_overrides.items():
@@ -53,6 +59,12 @@ def apply_custom_tool_config(
             )
 
             if tool_id in custom_registry:
+                if prop_key == 'description':
+                    if len(value) > 1024:
+                        logging.warning(
+                            f"Warning: The description for tool '{tool_id}' from CLI override exceeds 1024 characters ({len(value)}). "
+                            f"Some LLM models may not support descriptions this long."
+                        )
                 custom_registry[tool_id][prop_key] = value
 
     return custom_registry

@@ -93,4 +93,41 @@ def test_cli_name_alias():
     registry = copy.deepcopy(MOCK_TOOL_REGISTRY)
     custom_registry = apply_custom_tool_config(registry, '', cli_overrides)
 
-    assert custom_registry['ListIndexTool']['display_name'] == 'CLI Name Alias' 
+    assert custom_registry['ListIndexTool']['display_name'] == 'CLI Name Alias'
+
+
+def test_long_description_warning_from_yaml(caplog):
+    """Test that a warning is logged for long descriptions from a YAML file."""
+    long_description = 'a' * 1025
+    config_content = {
+        'tools': {
+            'ListIndexTool': {'description': long_description},
+        }
+    }
+    config_path = 'test_temp_config.yml'
+    with open(config_path, 'w') as f:
+        yaml.dump(config_content, f)
+
+    registry = copy.deepcopy(MOCK_TOOL_REGISTRY)
+    apply_custom_tool_config(registry, config_path, {})
+
+    assert len(caplog.records) == 1
+    assert caplog.records[0].levelname == 'WARNING'
+    assert "exceeds 1024 characters" in caplog.text
+    assert "ListIndexTool" in caplog.text
+
+    os.remove(config_path)
+
+
+def test_long_description_warning_from_cli(caplog):
+    """Test that a warning is logged for long descriptions from CLI arguments."""
+    long_description = 'b' * 1025
+    cli_overrides = {'tool.SearchIndexTool.description': long_description}
+
+    registry = copy.deepcopy(MOCK_TOOL_REGISTRY)
+    apply_custom_tool_config(registry, '', cli_overrides)
+
+    assert len(caplog.records) == 1
+    assert caplog.records[0].levelname == 'WARNING'
+    assert "exceeds 1024 characters" in caplog.text
+    assert "SearchIndexTool" in caplog.text 
