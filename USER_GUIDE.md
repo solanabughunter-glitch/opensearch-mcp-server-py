@@ -495,6 +495,46 @@ export OPENSEARCH_SETTINGS_ALLOW_WRITE=true
 - When both config file and environment variables are provided, the config file will be prioritized
 - Tool filtering is only supported in single mode. In multi mode, tool filtering is not supported
 
+## Tool Customization
+
+OpenSearch MCP server supports tool customization to modify tool display names, descriptions, and other properties. You can customize tools using either a YAML configuration file or runtime parameters.
+
+### Configuration Methods
+
+1. **YAML Configuration File**
+
+Create a YAML file with your tool customization settings:
+```yaml
+tools:
+  ListIndexTool:
+    display_name: "Index Manager"
+    description: "List and manage OpenSearch indices"
+  GetShardsTool:
+    description: "Retrieve detailed information about OpenSearch shards"
+```
+
+Use the configuration file when starting the server:
+```bash
+python -m mcp_server_opensearch --config path/to/config.yml
+```
+
+2. **Runtime Parameters**
+
+Customize tools directly via command line arguments:
+```bash
+python -m mcp_server_opensearch --tool.ListIndexTool.display_name="Index Manager" --tool.SearchIndexTool.description="Custom search tool"
+```
+
+### Priority
+
+Runtime parameters have higher priority than configuration file settings. If both are provided, runtime parameters will override the corresponding values in the configuration file.
+
+### Important Notes
+- Tool customization is available in both single and multi modes
+- Only existing tools can be customized; new tools cannot be created
+- Changes take effect immediately when the server starts
+- Invalid tool names or properties will be ignored
+
 ## LangChain Integration
 
 The OpenSearch MCP server can be easily integrated with LangChain using the SSE server transport.
