@@ -6,6 +6,7 @@ import logging
 import re
 import yaml
 from typing import Dict, Any, Optional, List, Tuple
+from tools.tools import TOOL_REGISTRY as default_tool_registry
 
 # Field aliases mapping: actual field name -> list of accepted aliases
 FIELD_ALIASES = {
@@ -124,5 +125,7 @@ def apply_custom_tool_config(
     # Apply configurations (CLI overrides file configs)
     all_configs = file_configs + cli_configs
     _apply_validated_configs(custom_registry, all_configs)
+
+    default_tool_registry.update(custom_registry)
 
     return custom_registry

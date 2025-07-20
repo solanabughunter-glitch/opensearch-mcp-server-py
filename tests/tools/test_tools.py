@@ -27,7 +27,16 @@ class TestTools:
         )
         self.init_client_patcher.start()
 
-        # Import after patching
+        # Clear any existing imports to ensure fresh imports
+        import sys
+        modules_to_clear = [
+            'tools.tools',
+        ]
+        for module in modules_to_clear:
+            if module in sys.modules:
+                del sys.modules[module]
+
+        # Import after patching to ensure fresh imports
         from tools.tools import (
             TOOL_REGISTRY,
             GetIndexMappingArgs,
