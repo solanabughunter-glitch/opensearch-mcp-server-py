@@ -137,14 +137,23 @@ class TestGetTools:
 
         # Setup mocks
         mock_get_version.return_value = None
+        mock_is_compatible.return_value = True  # Should return True for serverless mode
 
         # Patch TOOL_REGISTRY to use our mock registry
         with patch('tools.tool_filter.TOOL_REGISTRY', mock_tool_registry):
             # Call get_tools in single mode with serverless environment
             result = get_tools(mock_tool_registry, mode='single')
 
-            # is_tool_compatible should not be called
-            mock_is_compatible.assert_not_called()
+            # is_tool_compatible should be called with None version, and should return True for serverless
+            mock_is_compatible.assert_called()
+            # Verify all calls were made with None as the version
+            for call in mock_is_compatible.call_args_list:
+                if len(call.args) > 0:  # Check if there are positional arguments
+                    assert call.args[0] is None, f"Expected None version, got {call.args[0]}"
+            
+            # Both tools should be enabled in serverless mode
+            assert 'ListIndexTool' in result
+            assert 'SearchIndexTool' in result
 
     def test_get_tools_single_mode_handles_missing_properties(self, mock_patches):
         """Test that single mode handles schemas without properties field."""
