@@ -41,7 +41,8 @@ pip install opensearch-mcp-server-py
 - [MsearchTool](https://docs.opensearch.org/docs/latest/api-reference/search-apis/multi-search/): Allows to execute several search operations in one request.
 - [GetClusterStateTool](https://docs.opensearch.org/docs/latest/api-reference/cluster-api/cluster-state/): Gets the current state of the cluster including node information, index settings, and more.
 - [GetSegmentsTool](https://docs.opensearch.org/docs/latest/api-reference/cat/cat-segments/): Gets information about Lucene segments in indices, including memory usage, document counts, and segment sizes.
-- [GetNodesTool](https://docs.opensearch.org/docs/latest/api-reference/cat/cat-nodes/): Gets information about nodes in the OpenSearch cluster, including system metrics like CPU usage, memory, disk space, and node roles.
+- [CatNodesTool](https://docs.opensearch.org/docs/latest/api-reference/cat/cat-nodes/): Gets information about nodes in the OpenSearch cluster, including system metrics like CPU usage, memory, disk space, and node roles.
+- [GetNodesTool](https://docs.opensearch.org/docs/latest/api-reference/nodes-apis/nodes-info/): Gets detailed information about nodes in the OpenSearch cluster, including static information like host system details, JVM info, processor type, node settings, thread pools, installed plugins, and more.
 - [GetIndexInfoTool](https://docs.opensearch.org/docs/latest/api-reference/index-apis/get-index/): Gets detailed information about an index including mappings, settings, and aliases. Supports wildcards in index names.
 - [GetIndexStatsTool](https://docs.opensearch.org/docs/latest/api-reference/index-apis/stats/): Gets statistics about an index including document count, store size, indexing and search performance metrics.
 - [GetQueryInsightsTool](https://docs.opensearch.org/docs/latest/monitoring-plugins/pa/index-query-insights/): Gets query insights from the /\_insights/top_queries endpoint, showing information about query patterns and performance.
@@ -105,10 +106,16 @@ pip install opensearch-mcp-server-py
   - `opensearch_url` (optional): The OpenSearch cluster URL to connect to
   - `index` (optional): Limit the information returned to the specified indices. If not provided, returns segments for all indices
 
-- **GetNodesTool**
+- **CatNodesTool**
 
   - `opensearch_url` (optional): The OpenSearch cluster URL to connect to
   - `metrics` (optional): A comma-separated list of metrics to display. Available metrics include: id, name, ip, port, role, master, heap.percent, ram.percent, cpu, load_1m, load_5m, load_15m, disk.total, disk.used, disk.avail, disk.used_percent
+
+- **GetNodesTool**
+
+  - `opensearch_url` (optional): The OpenSearch cluster URL to connect to
+  - `node_id` (optional): A comma-separated list of node IDs or names to limit the returned information. Supports node filters like \_local, \_master, master:true, data:false, etc. Defaults to \_all.
+  - `metric` (optional): A comma-separated list of metric groups to include in the response. Options include: settings, os, process, jvm, thread_pool, transport, http, plugins, ingest, aggregations, indices. Defaults to all metrics.
 
 - **GetIndexInfoTool**
 

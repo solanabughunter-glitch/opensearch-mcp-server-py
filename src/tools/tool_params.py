@@ -78,8 +78,8 @@ class GetSegmentsArgs(baseToolArgs):
         }
 
 
-class GetNodesArgs(baseToolArgs):
-    """Arguments for the GetNodesTool."""
+class CatNodesArgs(baseToolArgs):
+    """Arguments for the CatNodesTool."""
     
     metrics: Optional[str] = Field(
         default=None, 
@@ -198,6 +198,34 @@ class GetLongRunningTasksArgs(baseToolArgs):
                 {},  # Default example to show top 10 long-running tasks
                 {
                     "limit": 5  # Example to show top 5 long-running tasks
+                }
+            ]
+        }
+
+
+class GetNodesArgs(baseToolArgs):
+    """Arguments for the GetNodesTool."""
+    
+    node_id: Optional[str] = Field(
+        default=None,
+        description='A comma-separated list of node IDs or names to limit the returned information. Supports node filters like _local, _master, master:true, data:false, etc. Defaults to _all.'
+    )
+    metric: Optional[str] = Field(
+        default=None,
+        description='A comma-separated list of metric groups to include in the response. Options include: settings, os, process, jvm, thread_pool, transport, http, plugins, ingest, aggregations, indices. Defaults to all metrics.'
+    )
+    
+    class Config:
+        json_schema_extra = {
+            "examples": [
+                {},  # Get all nodes with all metrics
+                {
+                    "node_id": "master:true",
+                    "metric": "process,transport"
+                },
+                {
+                    "node_id": "_local",
+                    "metric": "jvm,os"
                 }
             ]
         }

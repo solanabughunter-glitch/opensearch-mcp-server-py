@@ -52,6 +52,7 @@ class TestTools:
             SearchIndexArgs,
             GetClusterStateArgs,
             GetSegmentsArgs,
+            CatNodesArgs,
             GetNodesArgs,
             GetIndexInfoArgs,
             GetIndexStatsArgs,
@@ -65,6 +66,7 @@ class TestTools:
             search_index_tool,
             get_cluster_state_tool,
             get_segments_tool,
+            cat_nodes_tool,
             get_nodes_tool,
             get_index_info_tool,
             get_index_stats_tool,
@@ -80,10 +82,11 @@ class TestTools:
         self.GetShardsArgs = GetShardsArgs
         self.GetClusterStateArgs = GetClusterStateArgs
         self.GetSegmentsArgs = GetSegmentsArgs
-        self.GetNodesArgs = GetNodesArgs
+        self.CatNodesArgs = CatNodesArgs
         self.GetIndexInfoArgs = GetIndexInfoArgs
         self.GetIndexStatsArgs = GetIndexStatsArgs
         self.GetQueryInsightsArgs = GetQueryInsightsArgs
+        self.GetNodesArgs = GetNodesArgs
         self.GetNodesHotThreadsArgs = GetNodesHotThreadsArgs
         self.GetAllocationArgs = GetAllocationArgs
         self.GetLongRunningTasksArgs = GetLongRunningTasksArgs
@@ -94,6 +97,7 @@ class TestTools:
         self._get_shards_tool = get_shards_tool
         self._get_cluster_state_tool = get_cluster_state_tool
         self._get_segments_tool = get_segments_tool
+        self._cat_nodes_tool = cat_nodes_tool
         self._get_nodes_tool = get_nodes_tool
         self._get_index_info_tool = get_index_info_tool
         self._get_index_stats_tool = get_index_stats_tool
@@ -486,8 +490,8 @@ class TestTools:
         self.mock_client.cat.segments.assert_called_once_with(index=None, format='json')
     
     @pytest.mark.asyncio
-    async def test_get_nodes_tool(self):
-        """Test get_nodes_tool successful."""
+    async def test_cat_nodes_tool(self):
+        """Test cat_nodes_tool successful."""
         # Setup
         mock_nodes = [
             {
@@ -508,8 +512,8 @@ class TestTools:
         self.mock_client.cat.nodes.return_value = mock_nodes
         
         # Execute
-        args = self.GetNodesArgs()
-        result = await self._get_nodes_tool(args)
+        args = self.CatNodesArgs()
+        result = await self._cat_nodes_tool(args)
         
         # Assert
         assert len(result) == 1
@@ -520,8 +524,8 @@ class TestTools:
         self.mock_client.cat.nodes.assert_called_once_with(format='json', h=None)
     
     @pytest.mark.asyncio
-    async def test_get_nodes_tool_with_metrics(self):
-        """Test get_nodes_tool with metrics parameter."""
+    async def test_cat_nodes_tool_with_metrics(self):
+        """Test cat_nodes_tool with metrics parameter."""
         # Setup
         mock_nodes = [
             {
@@ -533,8 +537,8 @@ class TestTools:
         self.mock_client.cat.nodes.return_value = mock_nodes
         
         # Execute
-        args = self.GetNodesArgs(metrics='name,ip,heap.percent')
-        result = await self._get_nodes_tool(args)
+        args = self.CatNodesArgs(metrics='name,ip,heap.percent')
+        result = await self._cat_nodes_tool(args)
         
         # Assert
         assert len(result) == 1
@@ -545,14 +549,14 @@ class TestTools:
         self.mock_client.cat.nodes.assert_called_once_with(format='json', h='name,ip,heap.percent')
     
     @pytest.mark.asyncio
-    async def test_get_nodes_tool_error(self):
-        """Test get_nodes_tool exception handling."""
+    async def test_cat_nodes_tool_error(self):
+        """Test cat_nodes_tool exception handling."""
         # Setup
         self.mock_client.cat.nodes.side_effect = Exception('Test error')
         
         # Execute
-        args = self.GetNodesArgs()
-        result = await self._get_nodes_tool(args)
+        args = self.CatNodesArgs()
+        result = await self._cat_nodes_tool(args)
         
         # Assert
         assert len(result) == 1
@@ -996,11 +1000,139 @@ class TestTools:
             }
         )
     
+    @pytest.mark.asyncio
+    async def test_get_nodes_tool_success(self):
+        """Test get_nodes_tool returns detailed node information."""
+        # Setup: mock detailed node info as returned by OpenSearch /_nodes endpoint
+        mock_response = {
+            "_nodes": {
+                "total": 2,
+                "successful": 2,
+                "failed": 0
+            },
+            "cluster_name": "test-cluster",
+            "nodes": {
+                "node1": {
+                    "name": "node-1",
+                    "transport_address": "127.0.0.1:9300",
+                    "host": "127.0.0.1",
+                    "ip": "127.0.0.1",
+                    "version": "2.11.1",
+                    "build_type": "tar",
+                    "roles": ["data", "master"],
+                    "os": {
+                        "name": "Linux",
+                        "arch": "amd64",
+                        "version": "5.4.0"
+                    },
+                    "process": {
+                        "refresh_interval_in_millis": 1000,
+                        "id": 12345,
+                        "mlockall": False
+                    }
+                },
+                "node2": {
+                    "name": "node-2",
+                    "transport_address": "127.0.0.1:9301",
+                    "host": "127.0.0.1",
+                    "ip": "127.0.0.1",
+                    "version": "2.11.1",
+                    "build_type": "tar",
+                    "roles": ["data"],
+                    "os": {
+                        "name": "Linux",
+                        "arch": "amd64",
+                        "version": "5.4.0"
+                    }
+                }
+            }
+        }
+        self.mock_client.transport.perform_request.return_value = mock_response
+        
+        # Execute
+        args = self.GetNodesArgs()
+        result = await self._get_nodes_tool(args)
+        
+        # Assert
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Detailed node information for all nodes' in result[0]['text']
+        assert '"name": "node-1"' in result[0]['text']
+        assert '"name": "node-2"' in result[0]['text']
+        assert '"cluster_name": "test-cluster"' in result[0]['text']
+        self.mock_client.transport.perform_request.assert_called_once_with(
+            method='GET',
+            url='/_nodes'
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_nodes_tool_with_filters(self):
+        """Test get_nodes_tool with node_id and metric filters."""
+        # Setup
+        mock_response = {
+            "_nodes": {
+                "total": 1,
+                "successful": 1,
+                "failed": 0
+            },
+            "cluster_name": "test-cluster",
+            "nodes": {
+                "master-node": {
+                    "name": "master-node",
+                    "transport_address": "127.0.0.1:9300",
+                    "process": {
+                        "refresh_interval_in_millis": 1000,
+                        "id": 12345,
+                        "mlockall": False
+                    },
+                    "transport": {
+                        "bound_address": ["127.0.0.1:9300"],
+                        "publish_address": "127.0.0.1:9300"
+                    }
+                }
+            }
+        }
+        self.mock_client.transport.perform_request.return_value = mock_response
+        
+        # Execute
+        args = self.GetNodesArgs(node_id="master:true", metric="process,transport")
+        result = await self._get_nodes_tool(args)
+        
+        # Assert
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Detailed node information for nodes: master:true' in result[0]['text']
+        assert '(metrics: process,transport)' in result[0]['text']
+        assert '"name": "master-node"' in result[0]['text']
+        self.mock_client.transport.perform_request.assert_called_once_with(
+            method='GET',
+            url='/_nodes/master:true/process,transport'
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_nodes_tool_error(self):
+        """Test get_nodes_tool exception handling."""
+        # Setup
+        self.mock_client.transport.perform_request.side_effect = Exception('Test error')
+        
+        # Execute
+        args = self.GetNodesArgs()
+        result = await self._get_nodes_tool(args)
+        
+        # Assert
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Error getting nodes information: Test error' in result[0]['text']
+        self.mock_client.transport.perform_request.assert_called_once_with(
+            method='GET',
+            url='/_nodes'
+        )
+
     def test_tool_registry(self):
         """Test TOOL_REGISTRY structure."""
         expected_tools = [
             'ListIndexTool', 'IndexMappingTool', 'SearchIndexTool', 'GetShardsTool',
-            'GetClusterStateTool', 'GetSegmentsTool', 'GetNodesTool', 'GetIndexInfoTool',
+            'GetClusterStateTool', 'GetSegmentsTool', 'CatNodesTool', 'GetNodesTool', 'GetIndexInfoTool',
             'GetIndexStatsTool', 'GetQueryInsightsTool', 'GetNodesHotThreadsTool',
             'GetAllocationTool', 'GetLongRunningTasksTool'
         ]

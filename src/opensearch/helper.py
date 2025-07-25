@@ -104,7 +104,7 @@ def get_cluster_state(args: GetClusterStateArgs) -> json:
     return response
 
 
-def get_nodes(args: GetNodesArgs) -> json:
+def get_nodes(args: CatNodesArgs) -> json:
     """Get information about nodes in the cluster.
     
     Args:
@@ -254,6 +254,41 @@ def get_long_running_tasks(args: GetLongRunningTasksArgs) -> json:
     # Limit the number of tasks returned if specified
     if args.limit and isinstance(response, list):
         return response[:args.limit]
+    
+    return response
+
+
+def get_nodes_info(args: GetNodesArgs) -> json:
+    """Get detailed information about nodes in the cluster.
+    
+    Args:
+        args: GetNodesArgs containing optional node_id, metric filters, and other parameters
+        
+    Returns:
+        json: Detailed node information from the /_nodes endpoint
+    """
+    from .client import initialize_client
+    
+    client = initialize_client(args)
+    
+    # Build the URL path based on provided parameters
+    url_parts = ['/_nodes']
+    
+    # Add node_id if provided
+    if args.node_id:
+        url_parts.append(args.node_id)
+    
+    # Add metric if provided
+    if args.metric:
+        url_parts.append(args.metric)
+    
+    url = '/'.join(url_parts)
+    
+    # Use the transport.perform_request method to make a direct REST API call
+    response = client.transport.perform_request(
+        method='GET',
+        url=url
+    )
     
     return response
 

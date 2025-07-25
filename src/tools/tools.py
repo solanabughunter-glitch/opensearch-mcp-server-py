@@ -9,6 +9,7 @@ from .tool_params import (
     GetIndexMappingArgs,
     GetIndexStatsArgs,
     GetLongRunningTasksArgs,
+    CatNodesArgs,
     GetNodesArgs,
     GetNodesHotThreadsArgs,
     GetQueryInsightsArgs,
@@ -28,6 +29,7 @@ from opensearch.helper import (
     get_index_stats,
     get_long_running_tasks,
     get_nodes,
+    get_nodes_info,
     get_nodes_hot_threads,
     get_opensearch_version,
     get_query_insights,
@@ -211,17 +213,17 @@ async def get_segments_tool(args: GetSegmentsArgs) -> list[dict]:
         return [{'type': 'text', 'text': f'Error getting segment information: {str(e)}'}]
 
 
-async def get_nodes_tool(args: GetNodesArgs) -> list[dict]:
+async def cat_nodes_tool(args: CatNodesArgs) -> list[dict]:
     """Tool to get information about nodes in the cluster.
     
     Args:
-        args: GetNodesArgs containing optional metrics filter
+        args: CatNodesArgs containing optional metrics filter
         
     Returns:
         list[dict]: Node information in MCP format
     """
     try:
-        check_tool_compatibility('GetNodesTool', args)
+        check_tool_compatibility('CatNodesTool', args)
         result = get_nodes(args)
         
         if isinstance(result, dict) and 'error' in result:
@@ -391,6 +393,40 @@ async def get_allocation_tool(args: GetAllocationArgs) -> list[dict]:
         return [{'type': 'text', 'text': f'Error getting allocation information: {str(e)}'}]
 
 
+async def get_nodes_tool(args: GetNodesArgs) -> list[dict]:
+    """Tool to get detailed information about nodes in the cluster.
+    
+    Args:
+        args: GetNodesArgs containing optional node_id, metric filters, and other parameters
+        
+    Returns:
+        list[dict]: Detailed node information in MCP format
+    """
+    try:
+        check_tool_compatibility('GetNodesTool', args)
+        result = get_nodes_info(args)
+        
+        if isinstance(result, dict) and 'error' in result:
+            return [{'type': 'text', 'text': f'Error getting nodes information: {result["error"]}'}]
+        
+        # Format the response for better readability
+        formatted_result = json.dumps(result, indent=2)
+        
+        # Create response message based on what was requested
+        message = "Detailed node information"
+        if args.node_id:
+            message += f" for nodes: {args.node_id}"
+        else:
+            message += " for all nodes"
+        
+        if args.metric:
+            message += f" (metrics: {args.metric})"
+        
+        return [{'type': 'text', 'text': f'{message}:\n{formatted_result}'}]
+    except Exception as e:
+        return [{'type': 'text', 'text': f'Error getting nodes information: {str(e)}'}]
+
+
 async def get_long_running_tasks_tool(args: GetLongRunningTasksArgs) -> list[dict]:
     """Tool to get information about long-running tasks in the cluster, sorted by running time.
     
@@ -468,6 +504,7 @@ TOOL_REGISTRY = {
         'http_methods': 'GET',
     },
     'GetClusterStateTool': {
+        'display_name': 'GetClusterStateTool',
         'description': 'Gets the current state of the cluster including node information, index settings, and more. Can be filtered by specific metrics and indices.',
         'input_schema': GetClusterStateArgs.model_json_schema(),
         'function': get_cluster_state_tool,
@@ -476,6 +513,7 @@ TOOL_REGISTRY = {
         'http_methods': 'GET',
     },
     'GetSegmentsTool': {
+        'display_name': 'GetSegmentsTool',
         'description': 'Gets information about Lucene segments in indices, including memory usage, document counts, and segment sizes. Can be filtered by specific indices.',
         'input_schema': GetSegmentsArgs.model_json_schema(),
         'function': get_segments_tool,
@@ -483,15 +521,17 @@ TOOL_REGISTRY = {
         'min_version': '1.0.0',
         'http_methods': 'GET',
     },
-    'GetNodesTool': {
+    'CatNodesTool': {
+        'display_name': 'CatNodesTool',
         'description': 'Gets information about nodes in the OpenSearch cluster, including system metrics like CPU usage, memory, disk space, and node roles. Can be filtered to specific metrics.',
-        'input_schema': GetNodesArgs.model_json_schema(),
-        'function': get_nodes_tool,
-        'args_model': GetNodesArgs,
+        'input_schema': CatNodesArgs.model_json_schema(),
+        'function': cat_nodes_tool,
+        'args_model': CatNodesArgs,
         'min_version': '1.0.0',
         'http_methods': 'GET',
     },
     'GetIndexInfoTool': {
+        'display_name': 'GetIndexInfoTool',
         'description': 'Gets detailed information about an index including mappings, settings, and aliases. Supports wildcards in index names.',
         'input_schema': GetIndexInfoArgs.model_json_schema(),
         'function': get_index_info_tool,
@@ -500,6 +540,7 @@ TOOL_REGISTRY = {
         'http_methods': 'GET',
     },
     'GetIndexStatsTool': {
+        'display_name': 'GetIndexStatsTool',
         'description': 'Gets statistics about an index including document count, store size, indexing and search performance metrics. Can be filtered to specific metrics.',
         'input_schema': GetIndexStatsArgs.model_json_schema(),
         'function': get_index_stats_tool,
@@ -508,6 +549,7 @@ TOOL_REGISTRY = {
         'http_methods': 'GET',
     },
     'GetQueryInsightsTool': {
+        'display_name': 'GetQueryInsightsTool',
         'description': 'Gets query insights from the /_insights/top_queries endpoint, showing information about query patterns and performance.',
         'input_schema': GetQueryInsightsArgs.model_json_schema(),
         'function': get_query_insights_tool,
@@ -516,6 +558,7 @@ TOOL_REGISTRY = {
         'http_methods': 'GET',
     },
     'GetNodesHotThreadsTool': {
+        'display_name': 'GetNodesHotThreadsTool',
         'description': 'Gets information about hot threads in the cluster nodes from the /_nodes/hot_threads endpoint.',
         'input_schema': GetNodesHotThreadsArgs.model_json_schema(),
         'function': get_nodes_hot_threads_tool,
@@ -524,6 +567,7 @@ TOOL_REGISTRY = {
         'http_methods': 'GET',
     },
     'GetAllocationTool': {
+        'display_name': 'GetAllocationTool',
         'description': 'Gets information about shard allocation across nodes in the cluster from the /_cat/allocation endpoint.',
         'input_schema': GetAllocationArgs.model_json_schema(),
         'function': get_allocation_tool,
@@ -532,10 +576,20 @@ TOOL_REGISTRY = {
         'http_methods': 'GET',
     },
     'GetLongRunningTasksTool': {
+        'display_name': 'GetLongRunningTasksTool',
         'description': 'Gets information about long-running tasks in the cluster, sorted by running time in descending order.',
         'input_schema': GetLongRunningTasksArgs.model_json_schema(),
         'function': get_long_running_tasks_tool,
         'args_model': GetLongRunningTasksArgs,
+        'min_version': '1.0.0',
+        'http_methods': 'GET',
+    },
+    'GetNodesTool': {
+        'display_name': 'GetNodesTool',
+        'description': 'Gets detailed information about nodes in the OpenSearch cluster, including static information like host system details, JVM info, processor type, node settings, thread pools, installed plugins, and more. Can be filtered by specific nodes and metrics.',
+        'input_schema': GetNodesArgs.model_json_schema(),
+        'function': get_nodes_tool,
+        'args_model': GetNodesArgs,
         'min_version': '1.0.0',
         'http_methods': 'GET',
     },
