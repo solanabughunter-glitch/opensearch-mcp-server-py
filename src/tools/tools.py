@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+from typing import Any, Dict, List
 from .tool_params import (
     GetIndexMappingArgs,
     GetShardsArgs,
     ListIndicesArgs,
     SearchIndexArgs,
     baseToolArgs,
+    AggregationsArgs,
 )
 from .utils import is_tool_compatible
 from opensearch.helper import (
@@ -17,6 +19,7 @@ from opensearch.helper import (
     get_shards,
     list_indices,
     search_index,
+    run_aggregations,
 )
 
 
@@ -118,6 +121,21 @@ async def get_shards_tool(args: GetShardsArgs) -> list[dict]:
         return [{'type': 'text', 'text': f'Error getting shards information: {str(e)}'}]
 
 
+async def aggregations_tool(args: AggregationsArgs) -> List[Dict[str, Any]]:
+    try:
+        resp = run_aggregations(args)
+        if args.raw:
+            return [{"type": "text", "text": json.dumps(resp, ensure_ascii=False)}]
+        out = {
+            "took_ms": resp.get("took"),
+            "timed_out": resp.get("timed_out", False),
+            "aggregations": resp.get("aggregations", {}),
+        }
+        return [{"type": "text", "text": json.dumps(out, ensure_ascii=False)}]
+    except Exception as e:
+        return [{"type": "text", "text": f"Error: {e}"}]
+
+
 # Registry of available OpenSearch tools with their metadata
 TOOL_REGISTRY = {
     'ListIndexTool': {
@@ -152,5 +170,16 @@ TOOL_REGISTRY = {
         'function': get_shards_tool,
         'args_model': GetShardsArgs,
         'http_methods': 'GET',
+    },
+    'AggregationsTool': {
+        'display_name': 'AggregationsTool',
+        'description': (
+            'Runs an aggregations-only search (size: 0) and returns took_ms, '
+            'timed_out, and aggregations. Set raw=true to return the full OpenSearch response.'
+        ),
+        'input_schema': AggregationsArgs.model_json_schema(),
+        'function': aggregations_tool,
+        'args_model': AggregationsArgs,
+        'http_methods': 'GET, POST',
     },
 }
