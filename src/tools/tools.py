@@ -523,8 +523,7 @@ TOOL_REGISTRY = {
     },
     'CatNodesTool': {
         'display_name': 'CatNodesTool',
-        'description': 'Gets information about nodes in the OpenSearch cluster, including system metrics like CPU usage, memory, disk space, and node roles. Can be filtered to specific metrics.',
-        'input_schema': CatNodesArgs.model_json_schema(),
+        'description': 'Lists node-level information, including node roles and load metrics. Gets information about nodes metrics in the OpenSearch cluster, including system metrics pid, name, cluster_manager, ip, port, version, build, jdk, along with disk, heap, ram, and file_desc. Can be filtered to specific metrics.',        'input_schema': CatNodesArgs.model_json_schema(),
         'function': cat_nodes_tool,
         'args_model': CatNodesArgs,
         'min_version': '1.0.0',
@@ -554,7 +553,7 @@ TOOL_REGISTRY = {
         'input_schema': GetQueryInsightsArgs.model_json_schema(),
         'function': get_query_insights_tool,
         'args_model': GetQueryInsightsArgs,
-        'min_version': '2.0.0',  # Query insights feature requires OpenSearch 2.0+
+        'min_version': '2.12.0',  # Query insights feature requires OpenSearch 2.12+
         'http_methods': 'GET',
     },
     'GetNodesHotThreadsTool': {
