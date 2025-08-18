@@ -48,7 +48,7 @@ async def list_indices_tool(args: ListIndicesArgs) -> list[dict]:
     try:
         check_tool_compatibility('ListIndexTool', args)
 
-        # If index is provided, get detailed information for that specific index
+        # If index is provided, always return detailed information for that specific index
         if args.index:
             index_info = get_index(args)
             formatted_info = json.dumps(index_info, indent=2)
@@ -56,11 +56,21 @@ async def list_indices_tool(args: ListIndicesArgs) -> list[dict]:
                 {'type': 'text', 'text': f'Index information for {args.index}:\n{formatted_info}'}
             ]
 
-        # Otherwise, list all indices with full information
+        # Otherwise, list all indices
         indices = list_indices(args)
-        formatted_indices = json.dumps(indices, indent=2)
 
-        # Return in MCP expected format
+        # If include_detail is False, return only pure list of index names
+        if not args.include_detail:
+            index_names = [
+                item.get('index')
+                for item in indices
+                if isinstance(item, dict) and 'index' in item
+            ]
+            formatted_names = json.dumps(index_names, indent=2)
+            return [{'type': 'text', 'text': f'Indices:\n{formatted_names}'}]
+
+        # include_detail is True: return full information
+        formatted_indices = json.dumps(indices, indent=2)
         return [{'type': 'text', 'text': f'All indices information:\n{formatted_indices}'}]
     except Exception as e:
         return [{'type': 'text', 'text': f'Error listing indices: {str(e)}'}]
@@ -122,7 +132,7 @@ async def get_shards_tool(args: GetShardsArgs) -> list[dict]:
 TOOL_REGISTRY = {
     'ListIndexTool': {
         'display_name': 'ListIndexTool',
-        'description': 'Lists all indices in the OpenSearch cluster with full information including docs.count, docs.deleted, store.size, etc. If an index parameter is provided, returns detailed information about that specific index.',
+        'description': 'Lists indices in the OpenSearch cluster. By default, returns a filtered list of index names only to minimize response size. Set include_detail=true to return full metadata from cat.indices (docs.count, store.size, etc.). If an index parameter is provided, returns detailed information for that specific index including mappings and settings.',
         'input_schema': ListIndicesArgs.model_json_schema(),
         'function': list_indices_tool,
         'args_model': ListIndicesArgs,
