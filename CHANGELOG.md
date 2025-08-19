@@ -6,9 +6,12 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Added
 - AggregationsTool to run aggregations-only searches (`size: 0`) with optional `raw` output.
+- Add `include_detail` as optional parameter to `ListIndexTool`. ([#97](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/97))
+
 ### Chore
 - Relaxed Ruff rules for test files to reduce docstring/import noise.
 - Fixed a trivial F541 lint in a log message (no behavioral change).
+
 ### Fixed
 - AWS client configuration defaults and clearer error messages.
 - Typing/config cleanup; removed stray local files and tightened `.gitignore`.

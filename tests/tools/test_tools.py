@@ -65,8 +65,8 @@ class TestTools:
         self.init_client_patcher.stop()
 
     @pytest.mark.asyncio
-    async def test_list_indices_tool(self):
-        """Test list_indices_tool returns full JSON info for all indices."""
+    async def test_list_indices_tool_default_full(self):
+        """Default behavior: returns full JSON info for all indices (include_detail=True)."""
         # Setup: mock full index info as returned by OpenSearch cat.indices
         self.mock_client.cat.indices.return_value = [
             {
@@ -99,7 +99,7 @@ class TestTools:
         # Assert
         assert len(result) == 1
         assert result[0]['type'] == 'text'
-        # Should include the full JSON output
+        # Should include the full JSON output by default
         assert '"index": "index1"' in result[0]['text']
         assert '"docs.count": "100"' in result[0]['text']
         assert '"index": "index2"' in result[0]['text']
@@ -107,8 +107,48 @@ class TestTools:
         self.mock_client.cat.indices.assert_called_once_with(format='json')
 
     @pytest.mark.asyncio
+    async def test_list_indices_tool_include_detail_false(self):
+        """When include_detail=False, returns only pure list of index names (filtered)."""
+        # Setup
+        self.mock_client.cat.indices.return_value = [
+            {
+                'health': 'green',
+                'status': 'open',
+                'index': 'index1',
+                'uuid': 'uuid1',
+                'pri': '1',
+                'rep': '1',
+                'docs.count': '100',
+                'docs.deleted': '5',
+                'store.size': '1mb',
+                'pri.store.size': '0.5mb',
+            },
+            {
+                'health': 'yellow',
+                'status': 'open',
+                'index': 'index2',
+                'uuid': 'uuid2',
+                'pri': '2',
+                'rep': '2',
+                'docs.count': '200',
+                'docs.deleted': '10',
+                'store.size': '2mb',
+                'pri.store.size': '1mb',
+            },
+        ]
+        # Execute
+        result = await self._list_indices_tool(self.ListIndicesArgs(include_detail=False))
+        # Assert
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        payload = json.loads(result[0]['text'].split('\n', 1)[1])
+        assert payload == ['index1', 'index2']
+        assert 'docs.count' not in result[0]['text']
+        self.mock_client.cat.indices.assert_called_once_with(format='json')
+
+    @pytest.mark.asyncio
     async def test_list_indices_tool_with_index(self):
-        """Test list_indices_tool returns detailed info for a single index."""
+        """When index is provided, returns detailed info for a single index."""
         # Setup: mock detailed index info as returned by OpenSearch indices.get
         mock_index_info = {
             'index1': {
@@ -131,6 +171,27 @@ class TestTools:
             '"field1": {"type": "text"}' in result[0]['text']
             or '"type": "text"' in result[0]['text']
         )
+        self.mock_client.indices.get.assert_called_once_with(index='index1')
+
+    @pytest.mark.asyncio
+    async def test_list_indices_tool_with_index_filtered(self):
+        """Deprecated behavior removed: index with include_detail=False should still return details (kept to ensure no regression to name-only)."""
+        # Setup detailed info
+        mock_index_info = {
+            'index1': {
+                'aliases': {},
+                'mappings': {'properties': {'field1': {'type': 'text'}}},
+                'settings': {'index': {'number_of_shards': '1', 'number_of_replicas': '1'}},
+            }
+        }
+        self.mock_client.indices.get.return_value = mock_index_info
+        # Execute
+        args = self.ListIndicesArgs(index='index1', include_detail=False)
+        result = await self._list_indices_tool(args)
+        # Assert still returns details
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Index information for index1' in result[0]['text']
         self.mock_client.indices.get.assert_called_once_with(index='index1')
 
     @pytest.mark.asyncio
