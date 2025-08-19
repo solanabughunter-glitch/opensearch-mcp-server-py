@@ -5,6 +5,7 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [Unreleased]
 
 ### Added
+- Add new operational tools for comprehensive OpenSearch cluster analysis: `GetClusterStateTool`, `GetSegmentsTool`, `CatNodesTool`, `GetNodesTool`, `GetIndexInfoTool`, `GetIndexStatsTool`, `GetQueryInsightsTool`, `GetNodesHotThreadsTool`, `GetAllocationTool`, and `GetLongRunningTasksTool` and test cases (#78)
 
 ### Fixed
 

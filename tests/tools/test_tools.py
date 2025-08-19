@@ -25,7 +25,7 @@ class TestTools:
         self.mock_client.cluster.state.return_value = {}
         self.mock_client.indices.stats.return_value = {}
         self.mock_client.transport.perform_request.return_value = {}
-        self.mock_client.info.return_value = {'version': {'number': '2.11.1'}}
+        self.mock_client.info.return_value = {'version': {'number': '2.19.0'}}
 
         # Patch initialize_client to always return our mock client
         self.init_client_patcher = patch(
@@ -1017,7 +1017,7 @@ class TestTools:
                     "transport_address": "127.0.0.1:9300",
                     "host": "127.0.0.1",
                     "ip": "127.0.0.1",
-                    "version": "2.11.1",
+                    "version": "2.19.0",
                     "build_type": "tar",
                     "roles": ["data", "master"],
                     "os": {
@@ -1036,7 +1036,7 @@ class TestTools:
                     "transport_address": "127.0.0.1:9301",
                     "host": "127.0.0.1",
                     "ip": "127.0.0.1",
-                    "version": "2.11.1",
+                    "version": "2.19.0",
                     "build_type": "tar",
                     "roles": ["data"],
                     "os": {
