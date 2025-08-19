@@ -20,12 +20,10 @@ license-files = ["LICENSE", "NOTICE" ]
 
 [dependency-groups]
 dev = [
-    "mypy>=1.17.1",
     "pytest>=8.3.5",
     "pytest-asyncio>=0.26.0",
     "pytest-cov>=6.2.1",
     "ruff>=0.9.7",
-    "types-pyyaml>=6.0.12.20250809",
 ]
 
 [build-system]
@@ -65,6 +63,13 @@ no-sections = true
 
 [tool.ruff.lint.per-file-ignores]
 "**/*.ipynb" = ["F704"]
+"tests/**/*.py" = [
+  "D100","D101","D102","D103","D104","D105","D106","D107",  # docstrings in tests
+  "D205","D212","D415",                                     # docstring format nits
+  "I001",                                                   # import-order in tests
+  "F401","F841"                                            # unused imports/vars in tests
+]
+
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
