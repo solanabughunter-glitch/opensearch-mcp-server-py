@@ -42,7 +42,7 @@ async def call_opensearch_tool(tool_name: str, parameters: Dict[str, Any]) -> Li
             body={'parameters': parameters}
         )
 
-        logger.info(f"工具 {tool_name} 结果: {json.dumps(response, indent=2)}")
+        logger.info(f"Tool {tool_name} result: {json.dumps(response, indent=2)}")
         formatted_result = json.dumps(response, indent=2)
         return [{'type': 'text', 'text': f'{tool_name} result:\n{formatted_result}'}]
 
