@@ -243,7 +243,8 @@ class TestGetTools:
                 not in result['SearchIndexTool']['input_schema']['properties']
             )
 
-    def test_get_tools_skills_tools_version_filtering(self, mock_tool_registry, mock_patches):
+    @pytest.mark.asyncio
+    async def test_get_tools_skills_tools_version_filtering(self, mock_tool_registry, mock_patches):
         """Test that skills tools are filtered based on version compatibility."""
         mock_get_version, mock_is_compatible = mock_patches
 
@@ -259,7 +260,7 @@ class TestGetTools:
 
         # Patch TOOL_REGISTRY to use our mock registry
         with patch('tools.tool_filter.TOOL_REGISTRY', mock_tool_registry):
-            result = get_tools(mock_tool_registry)
+            result = await get_tools(mock_tool_registry)
 
             # Skills tools should be filtered out due to version incompatibility
             assert 'DataDistributionTool' not in result
@@ -268,7 +269,8 @@ class TestGetTools:
             assert 'ListIndexTool' in result
             assert 'SearchIndexTool' in result
 
-    def test_get_tools_skills_tools_compatible_version(self, mock_tool_registry, mock_patches):
+    @pytest.mark.asyncio
+    async def test_get_tools_skills_tools_compatible_version(self, mock_tool_registry, mock_patches):
         """Test that skills tools are included when OpenSearch version is compatible."""
         mock_get_version, mock_is_compatible = mock_patches
 
@@ -278,7 +280,7 @@ class TestGetTools:
 
         # Patch TOOL_REGISTRY to use our mock registry
         with patch('tools.tool_filter.TOOL_REGISTRY', mock_tool_registry):
-            result = get_tools(mock_tool_registry)
+            result = await get_tools(mock_tool_registry)
 
             # All tools should be present including skills tools
             assert 'DataDistributionTool' in result
