@@ -2,12 +2,12 @@
 
 Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
-## [Unreleased]
+## [Released 0.5.1]
 
 ### Added
 
 ### Fixed
-
+Fix IAM role based auth ([#129](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/129))
 ### Removed
 
 ## [Released 0.5.0]
