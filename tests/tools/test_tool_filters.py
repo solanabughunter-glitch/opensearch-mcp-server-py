@@ -243,8 +243,6 @@ class TestGetTools:
                 not in result['SearchIndexTool']['input_schema']['properties']
             )
 
-    @pytest.mark.asyncio
-    async def test_get_tools_logs_version_info(self, mock_tool_registry, mock_patches, caplog):
     def test_get_tools_skills_tools_version_filtering(self, mock_tool_registry, mock_patches):
         """Test that skills tools are filtered based on version compatibility."""
         mock_get_version, mock_is_compatible = mock_patches
@@ -288,7 +286,8 @@ class TestGetTools:
             assert 'ListIndexTool' in result
             assert 'SearchIndexTool' in result
 
-    def test_get_tools_logs_version_info(self, mock_tool_registry, mock_patches, caplog):
+    @pytest.mark.asyncio
+    async def test_get_tools_logs_version_info(self, mock_tool_registry, mock_patches, caplog):
         """Test that get_tools logs version information in single mode."""
         mock_get_version, mock_is_compatible = mock_patches
         mock_get_version.return_value = Version.parse('2.5.0')
