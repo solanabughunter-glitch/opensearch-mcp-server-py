@@ -3,10 +3,10 @@
 
 import json
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any
 from .tool_params import baseToolArgs
 from pydantic import Field
-from opensearch.client import initialize_client
+from opensearch.client import get_opensearch_client
 
 logger = logging.getLogger(__name__)
 
@@ -29,17 +29,16 @@ class LogPatternAnalysisToolArgs(baseToolArgs):
     baseTimeRangeStart: str = Field(default="", description="Start time for baseline comparison period (optional)")
     baseTimeRangeEnd: str = Field(default="", description="End time for baseline comparison period (optional)")
 
-async def call_opensearch_tool(tool_name: str, parameters: Dict[str, Any], args: baseToolArgs) -> List[Dict]:
+async def call_opensearch_tool(tool_name: str, parameters: Dict[str, Any], args: baseToolArgs) -> list[dict]:
     """Call OpenSearch ML tools API"""
     try:
-        client = initialize_client(args)
-
-        # Call OpenSearch ML tools execute API
-        response = await client.transport.perform_request(
-            'POST',
-            f'/_plugins/_ml/tools/_execute/{tool_name}',
-            body={'parameters': parameters}
-        )
+        async with get_opensearch_client(args) as client:
+            # Call OpenSearch ML tools execute API
+            response = await client.transport.perform_request(
+                'POST',
+                f'/_plugins/_ml/tools/_execute/{tool_name}',
+                body={'parameters': parameters}
+            )
 
         logger.info(f"Tool {tool_name} result: {json.dumps(response, indent=2)}")
         formatted_result = json.dumps(response, indent=2)
@@ -48,7 +47,7 @@ async def call_opensearch_tool(tool_name: str, parameters: Dict[str, Any], args:
     except Exception as e:
         return [{'type': 'text', 'text': f'Error executing {tool_name}: {str(e)}'}]
 
-async def data_distribution_tool(args: DataDistributionToolArgs) -> List[Dict]:
+async def data_distribution_tool(args: DataDistributionToolArgs) -> list[dict]:
     params = {
         'index': args.index,
         'timeField': args.timeField,
@@ -64,7 +63,7 @@ async def data_distribution_tool(args: DataDistributionToolArgs) -> List[Dict]:
     result = await call_opensearch_tool('DataDistributionTool', params, args)
     return result
 
-async def log_pattern_analysis_tool(args: LogPatternAnalysisToolArgs) -> List[Dict]:
+async def log_pattern_analysis_tool(args: LogPatternAnalysisToolArgs) -> list[dict]:
     params = {
         'index': args.index,
         'timeField': args.timeField,
