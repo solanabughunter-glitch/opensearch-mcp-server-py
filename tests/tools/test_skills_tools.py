@@ -5,6 +5,7 @@ import json
 import pytest
 import sys
 from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock
 
 
 class TestSkillsTools:
@@ -15,7 +16,6 @@ class TestSkillsTools:
         
         # Configure mock client methods to return proper data structures
         # Use AsyncMock for async methods
-        from unittest.mock import AsyncMock
         self.mock_client.transport.perform_request = AsyncMock(return_value={})
         self.mock_client.info.return_value = {'version': {'number': '3.3.0'}}
 
