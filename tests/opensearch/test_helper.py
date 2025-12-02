@@ -529,12 +529,13 @@ class TestOpenSearchHelper:
                 "range": {
                     "timestamp": {
                         "gte": 1732693003E+3,
-                        "lte": 1732694400000
+                        "lte": 173.5
                     }
                 }
             }
         }
         result = normalize_scientific_notation(query_dsl)
         assert "1732693003000" in json.dumps(result)
+        assert "173.5" in json.dumps(result)
 
        
