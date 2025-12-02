@@ -8,7 +8,6 @@ import io
 import math
 from decimal import Decimal
 import json
-from .utils import *
 from semver import Version
 from tools.tool_params import *
 
