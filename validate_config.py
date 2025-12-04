@@ -130,17 +130,19 @@ def create_sample_config():
         "version": "1.0",
         "description": "Sample OpenSearch MCP Server Configuration",
         "clusters": {
-            "valid-cluster": {
+            "local-dev": {
                 "opensearch_url": "https://localhost:9200",
                 "opensearch_username": "admin",
                 "opensearch_password": "password",
                 "ssl_verify": False,
                 "timeout": 30
             },
-            "invalid-cluster": {
-                "opensearch_url": "invalid-url",  # This will cause validation error
-                "iam_arn": "invalid-arn",  # This will cause validation error
-                "aws_region": "invalid-region"  # This will cause validation error
+            "aws-prod": {
+                "opensearch_url": "https://search-my-domain.us-east-1.es.amazonaws.com",
+                "iam_arn": "arn:aws:iam::123456789012:role/OpenSearchRole",
+                "aws_region": "us-east-1",
+                "profile": "production",
+                "timeout": 60
             }
         },
         "tools": {
@@ -167,7 +169,7 @@ def create_sample_config():
         yaml.dump(sample_config, f, default_flow_style=False, indent=2)
     
     print(f"Created sample configuration file: {sample_file}")
-    print("   This file contains both valid and invalid configurations for testing.")
+    print("   This file demonstrates both basic auth and AWS IAM authentication configurations.")
     return str(sample_file)
 
 
