@@ -3,7 +3,13 @@
 Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
+### Added
 
+### Fixed
+
+### Removed
+
+## [Released 0.6.0]
 ### Added
 - Convert JSON to CSV for search index tool result ([#140](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/140))
 - Add Normalize scientific-notation floats in a request body for search index tool ([#142](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/142))
