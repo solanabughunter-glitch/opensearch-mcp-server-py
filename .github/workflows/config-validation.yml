@@ -1,0 +1,78 @@
+name: Configuration Validation
+
+on:
+  push:
+    paths:
+      - 'example_config.yml'
+      - 'src/tools/config_validator.py'
+      - 'validate_config.py'
+      - 'src/mcp_server_opensearch/clusters_information.py'
+  pull_request:
+    paths:
+      - 'example_config.yml'
+      - 'src/tools/config_validator.py'
+      - 'validate_config.py'
+      - 'src/mcp_server_opensearch/clusters_information.py'
+
+jobs:
+  validate-config:
+    name: Validate Configuration Files
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: |
+          uv venv
+          source .venv/bin/activate
+          uv sync
+
+      - name: Validate Example Configuration
+        run: |
+          source .venv/bin/activate
+          python validate_config.py example_config.yml
+
+      - name: Test Invalid Configuration Detection
+        run: |
+          source .venv/bin/activate
+          
+          # Create test invalid config
+          cat > test_invalid.yml << EOF
+          version: "bad-version"
+          clusters:
+            bad-cluster:
+              opensearch_url: "invalid-url"
+              iam_arn: "invalid-arn"
+          EOF
+          
+          # Should fail validation
+          if python validate_config.py test_invalid.yml; then
+            echo "❌ Validation should have failed for invalid config"
+            exit 1
+          else
+            echo "✅ Invalid configuration correctly rejected"
+          fi
+          
+          # Cleanup
+          rm -f test_invalid.yml
+
+      - name: Create Sample Configuration
+        run: |
+          source .venv/bin/activate
+          python validate_config.py --create-sample
+          
+          # Validate the created sample
+          python validate_config.py sample_config_with_validation.yml
+          
+          # Cleanup
+          rm -f sample_config_with_validation.yml

@@ -1,57 +1,87 @@
 version: "1.0"
 description: "Unified OpenSearch MCP Server Configuration"
 
+# =============================================================================
 # Cluster configurations (used in Multi Mode)
+# =============================================================================
+# Each cluster can use different authentication methods. Configure only one
+# authentication method per cluster to avoid warnings.
+
 clusters:
+  # Basic Authentication Example
   local-cluster:
     opensearch_url: "http://localhost:9200"
     opensearch_username: "admin"
     opensearch_password: "your_password_here"
+    ssl_verify: false  # Set to false for local development with self-signed certs
+    timeout: 30
 
+  # AWS Profile Authentication Example
   remote-cluster:
     opensearch_url: "https://your-opensearch-domain.us-east-2.es.amazonaws.com"
     profile: "your-aws-profile"
+    aws_region: "us-east-2"  # Optional: will be inferred from profile if not specified
+    timeout: 30
   
+  # IAM Role Authentication Example (Recommended for production)
   remote-cluster-with-iam:
     opensearch_url: "https://your-opensearch-domain.us-east-2.es.amazonaws.com"
     iam_arn: "arn:aws:iam::123456789012:role/YourOpenSearchRole"
     aws_region: "us-east-2"
-    profile: "your-aws-profile"
+    profile: "your-aws-profile"  # Profile used for assuming the IAM role
+    timeout: 30
 
+  # OpenSearch Serverless Example
   serverless-cluster:
     opensearch_url: "https://collection-id.us-east-1.aoss.amazonaws.com"
     aws_region: "us-east-1"
     profile: "your-aws-profile"
     is_serverless: true
+    timeout: 30
 
+  # No Authentication Example (Development only)
   no-auth-cluster:
     opensearch_url: "http://localhost:9200"
     opensearch_no_auth: true
+    timeout: 30
   
+  # Header-based Authentication Example
+  # Useful for dynamic authentication where credentials are passed in headers
   header-auth-cluster:
     opensearch_url: "https://your-opensearch-domain.us-east-2.es.amazonaws.com"
     opensearch_header_auth: true
+    timeout: 30
 
-Tool customization configurations (supported in both Single and Multi Mode)
+# =============================================================================
+# Tool customization configurations (supported in both Single and Multi Mode)
+# =============================================================================
+# Customize tool display names, descriptions, and argument descriptions
+# to better match your use case and provide clearer guidance to users.
+
 tools:
   ListIndexTool:
-    display_name: "My_Custom_Index_Lister"
-    description: "This is a custom description for the tool that lists indices. It's much more descriptive now!"
+    display_name: "Index_Lister"
+    description: "Lists all indices in the OpenSearch cluster with detailed information including document count, storage size, and health status."
     args:
-      index: "Custom description for the 'index' argument in ListIndexTool."
+      index: "The name of a specific index to get detailed information for. If not provided, lists all indices."
+      include_detail: "Set to true to include full metadata (default), or false to return only index names."
+  
   SearchIndexTool:
-    display_name: "Super_Searcher"
+    display_name: "Document_Searcher"
+    description: "Searches for documents in an index using OpenSearch Query DSL. Supports complex queries including full-text search, filters, aggregations, and sorting."
     args:
-      index: "Custom description for the 'index' argument in SearchIndexTool."
-      query: "Explain what kind of query JSON is expected here."
+      index: "The target index to search in. Use wildcards (*) to search multiple indices."
+      query: "OpenSearch Query DSL JSON object defining the search criteria, filters, and sorting."
+  
   GetShardsTool:
-    description: "A better description to get information about shards in OpenSearch."
+    display_name: "Shard_Information"
+    description: "Retrieves detailed information about shard allocation, state, and size across the cluster."
     args:
-      index: "Target index whose shards will be listed."
+      index: "The index name to get shard information for. Use wildcards (*) for multiple indices."
 
-# ==============================================================================
+# =============================================================================
 # Tool filtering configurations (ONLY supported in Single Mode)
-# ==============================================================================
+# =============================================================================
 # Note: These sections are ignored in Multi Mode. Tool filtering only works
 # when using Single Mode (--mode single or default mode).
 # Uncomment the sections below if you're using Single Mode and want to filter tools.
@@ -60,20 +90,35 @@ tools:
 #   search_tools:
 #     - "SearchIndexTool"
 #     - "MsearchTool"
+#     - "CountTool"
 #   management_tools:
 #     - "ListIndexTool"
-#     - "CreateIndexTool"
-#     - "DeleteIndexTool"
+#     - "GetIndexInfoTool"
+#     - "GetIndexStatsTool"
+#   monitoring_tools:
+#     - "ClusterHealthTool"
+#     - "GetShardsTool"
+#     - "CatNodesTool"
 
 # tool_filters:
+#   enabled_tools:
+#     - "ListIndexTool"
+#     - "SearchIndexTool"
+#     - "ClusterHealthTool"
 #   disabled_tools:
-#     - "DangerousTool"  # Example: disable dangerous tools
+#     - "GetClusterStateTool"  # Example: disable verbose cluster information
+#     - "GetNodesHotThreadsTool"  # Example: disable advanced debugging tools
+#   enabled_categories:
+#     - "search_tools"
+#     - "management_tools"
 #   disabled_categories:
-#     - "experimental_tools"  # Example: disable experimental tool category  
+#     - "experimental_tools"  # Example: disable experimental category
+#   enabled_tools_regex:
+#     - "Get.*"  # Example: enable all tools starting with "Get"
 #   disabled_tools_regex:
-#     - "debug.*"  # Example: disable all tools starting with debug
+#     - "debug.*"  # Example: disable all tools starting with "debug"
 #   settings:
-#     allow_write: true  # Enable/disable write operations
+#     allow_write: false  # Disable write operations for enhanced security
 
 
 # Example configurations for different authentication methods:

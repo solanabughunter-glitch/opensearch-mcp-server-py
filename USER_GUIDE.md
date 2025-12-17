@@ -151,6 +151,54 @@ tools:
     description: "Retrieve detailed information about OpenSearch shards"
 ```
 
+### Validating Your Configuration
+
+Before using your configuration file, it's recommended to validate it to catch any errors early. The server includes a built-in validation utility:
+
+```bash
+# Validate your configuration file
+python validate_config.py /path/to/your/config.yml
+
+# Validate with verbose output
+python validate_config.py /path/to/your/config.yml --verbose
+
+# Create a sample configuration file
+python validate_config.py --create-sample
+```
+
+**Validation Output Example:**
+```
+Validating configuration file: config.yml
+============================================================
+SUCCESS: Configuration is VALID
+
+Configuration Summary:
+   • Version: 1.0
+   • Clusters: 3
+   • Tool customizations: 2
+   • Tool categories: 0
+   • Tool filters: None
+
+Clusters:
+   • local-dev - Auth: basic_auth
+   • production - Auth: iam_role, aws_profile
+   • staging - Auth: aws_profile
+
+Warnings (1):
+   1. Cluster 'production': Multiple authentication methods configured: iam_role, aws_profile
+============================================================
+```
+
+**What the validator checks:**
+- Configuration file structure and syntax
+- Required fields (version, opensearch_url for each cluster)
+- URL format validation
+- IAM ARN format validation
+- AWS region format validation
+- Authentication method consistency
+- Tool configuration validity
+- Duplicate display names
+
 **Key Points about Multi Mode:**
 - **Cluster Names**: The keys under `clusters` (e.g., `local-dev`, `production`, `staging`) are used as the `opensearch_cluster_name` parameter when calling tools
 - **Authentication**: Each cluster can use different authentication methods (basic auth, IAM roles, AWS profiles)

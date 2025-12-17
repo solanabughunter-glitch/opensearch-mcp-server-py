@@ -6,6 +6,7 @@ import os
 import yaml
 from pydantic import BaseModel
 from typing import Dict, Optional
+from tools.config_validator import ConfigurationValidator, ClusterConfig
 
 
 class ClusterInfo(BaseModel):
@@ -64,6 +65,7 @@ async def load_clusters_from_yaml(file_path: str) -> None:
         yaml.YAMLError: If the YAML file is malformed
         UnicodeDecodeError: If the file has encoding issues
         OSError: For other file system related errors
+        ValueError: If the configuration validation fails
     """
     if not file_path:
         return
@@ -72,7 +74,7 @@ async def load_clusters_from_yaml(file_path: str) -> None:
     if not os.path.exists(file_path):
         raise FileNotFoundError(f'YAML file not found: {file_path}')
 
-    result = {'loaded_clusters': [], 'errors': [], 'total_clusters': 0}
+    result = {'loaded_clusters': [], 'errors': [], 'warnings': [], 'validation_errors': []}
 
     try:
         # Try to open and read the file with proper error handling
@@ -92,44 +94,74 @@ async def load_clusters_from_yaml(file_path: str) -> None:
         except OSError as e:
             raise OSError(f'OS error reading YAML file {file_path}: {str(e)}')
 
-        # Process clusters
-        clusters = config.get('clusters', {})
+        # Validate the entire configuration first
+        validation_result = ConfigurationValidator.validate_config_file(config or {})
+        
+        # Log validation warnings
+        for warning in validation_result.get('warnings', []):
+            logging.warning(f'Configuration warning: {warning}')
+            result['warnings'].append(warning)
+        
+        # Check for validation errors
+        if validation_result.get('errors'):
+            error_msg = 'Configuration validation failed:'
+            for error in validation_result['errors']:
+                error_msg += f'\n  - {error}'
+                result['validation_errors'].append(error)
+            logging.error(error_msg)
+            raise ValueError(error_msg)
+
+        # Get normalized configuration
+        normalized_config = validation_result.get('normalized_config', {})
+        clusters = normalized_config.get('clusters', {})
         result['total_clusters'] = len(clusters)
         logging.info(f'Total clusters found in config file: {result["total_clusters"]}')
 
+        # Process each validated cluster
         for cluster_name, cluster_config in clusters.items():
             try:
-                # Validate required fields
-                if 'opensearch_url' not in cluster_config:
-                    result['errors'].append(f'Missing opensearch_url for cluster: {cluster_name}')
-                    continue
+                # Create ClusterInfo from validated configuration
                 cluster_info = ClusterInfo(
                     opensearch_url=cluster_config['opensearch_url'],
-                    iam_arn=cluster_config.get('iam_arn', None),
-                    aws_region=cluster_config.get('aws_region', None),
-                    opensearch_username=cluster_config.get('opensearch_username', None),
-                    opensearch_password=cluster_config.get('opensearch_password', None),
-                    profile=cluster_config.get('profile', None),
-                    is_serverless=cluster_config.get('is_serverless', None),
-                    timeout=cluster_config.get('timeout', None),
-                    opensearch_no_auth=cluster_config.get('opensearch_no_auth', None),
-                    ssl_verify=cluster_config.get('ssl_verify', None),
-                    opensearch_header_auth=cluster_config.get('opensearch_header_auth', None),
+                    iam_arn=cluster_config.get('iam_arn'),
+                    aws_region=cluster_config.get('aws_region'),
+                    opensearch_username=cluster_config.get('opensearch_username'),
+                    opensearch_password=cluster_config.get('opensearch_password'),
+                    profile=cluster_config.get('profile'),
+                    is_serverless=cluster_config.get('is_serverless'),
+                    timeout=cluster_config.get('timeout'),
+                    opensearch_no_auth=cluster_config.get('opensearch_no_auth'),
+                    ssl_verify=cluster_config.get('ssl_verify'),
+                    opensearch_header_auth=cluster_config.get('opensearch_header_auth'),
                 )
 
-                # Add cluster to registry without checking connection
+                # Add cluster to registry
                 add_cluster(name=cluster_name, cluster_info=cluster_info)
                 result['loaded_clusters'].append(cluster_name)
+                logging.info(f'Successfully loaded cluster: {cluster_name}')
 
             except Exception as e:
-                result['errors'].append(f"Error processing cluster '{cluster_name}': {str(e)}")
+                error_msg = f"Error processing cluster '{cluster_name}': {str(e)}"
+                result['errors'].append(error_msg)
+                logging.error(error_msg)
 
-        result['loaded_clusters'] = list(cluster_registry.keys())
+        # Final summary
+        if result['loaded_clusters']:
+            logging.info(f'Successfully loaded {len(result["loaded_clusters"])} clusters: {result["loaded_clusters"]}')
+        else:
+            logging.warning('No clusters were successfully loaded')
+        
         if result['errors']:
             logging.error(f'Loading errors: {result["errors"]}')
-
-        logging.info(f'Loaded clusters: {result["loaded_clusters"]}')
-        return
+        
+        # Return summary for potential monitoring/telemetry
+        return result
 
     except yaml.YAMLError as e:
         raise yaml.YAMLError(f'Invalid YAML format in {file_path}: {str(e)}')
+    except ValueError:
+        # Re-raise validation errors
+        raise
+    except Exception as e:
+        logging.error(f'Unexpected error loading clusters from {file_path}: {e}')
+        raise

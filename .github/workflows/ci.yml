@@ -27,6 +27,11 @@ jobs:
           source .venv/bin/activate
           uv sync
 
+      - name: Validate Configuration
+        run: |
+          source .venv/bin/activate
+          python validate_config.py example_config.yml
+
       - name: Run tests
         run: |
           source .venv/bin/activate
@@ -53,6 +58,11 @@ jobs:
           uv venv
           source .venv/bin/activate
           uv sync
+
+      - name: Validate Configuration
+        run: |
+          source .venv/bin/activate
+          python validate_config.py example_config.yml
 
       - name: Run tests
         run: |
@@ -81,6 +91,12 @@ jobs:
           uv venv
           .\.venv\Scripts\Activate.ps1
           uv sync
+
+      - name: Validate Configuration
+        shell: pwsh
+        run: |
+          .\.venv\Scripts\Activate.ps1
+          python validate_config.py example_config.yml
 
       - name: Run tests
         shell: pwsh

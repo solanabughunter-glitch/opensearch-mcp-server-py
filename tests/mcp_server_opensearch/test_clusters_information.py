@@ -114,7 +114,7 @@ class TestLoadClustersFromYaml:
     async def test_load_clusters_from_yaml_empty_file(self):
         """Test loading from empty YAML file."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
-            f.write('clusters: {}')
+            f.write('version: "1.0"\nclusters: {}')
             f.flush()
 
             await load_clusters_from_yaml(f.name)
@@ -126,6 +126,7 @@ class TestLoadClustersFromYaml:
     async def test_load_clusters_from_yaml_valid_clusters(self):
         """Test loading valid clusters from YAML."""
         yaml_content = """
+version: "1.0"
 clusters:
   cluster1:
     opensearch_url: "https://localhost:9200"
@@ -165,6 +166,7 @@ clusters:
     async def test_load_clusters_from_yaml_with_no_auth(self):
         """Test loading cluster with opensearch_no_auth from YAML."""
         yaml_content = """
+version: "1.0"
 clusters:
   no-auth-cluster:
     opensearch_url: "http://localhost:9200"
@@ -201,6 +203,7 @@ clusters:
     async def test_load_clusters_from_yaml_missing_opensearch_url(self):
         """Test loading cluster without required opensearch_url."""
         yaml_content = """
+version: "1.0"
 clusters:
   invalid_cluster:
     opensearch_username: "admin"
@@ -210,17 +213,21 @@ clusters:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
             f.write(yaml_content)
             f.flush()
-            await load_clusters_from_yaml(f.name)
+            
+            # Should raise ValueError due to validation failure
+            with pytest.raises(ValueError, match="Configuration validation failed"):
+                await load_clusters_from_yaml(f.name)
 
         os.unlink(f.name)
 
-        # Cluster should not be added due to missing opensearch_url
+        # Cluster should not be added due to validation failure
         assert len(cluster_registry) == 0
 
     @pytest.mark.asyncio
     async def test_load_clusters_from_yaml_without_connection_check(self):
         """Test loading cluster without connection validation."""
         yaml_content = """
+version: "1.0"
 clusters:
   unreachable_cluster:
     opensearch_url: "https://unreachable:9200"
