@@ -629,6 +629,8 @@ tools:
       index: "Custom description for the 'index' argument in ListIndexTool."
   GetShardsTool:
     description: "Retrieve detailed information about OpenSearch shards"
+  SearchIndexTool:
+     max_size_limit: 20
 ```
 
 Use the configuration file when starting the server:
@@ -640,7 +642,7 @@ python -m mcp_server_opensearch --config path/to/config.yml
 
 Customize tools directly via command line arguments:
 ```bash
-python -m mcp_server_opensearch --tool.ListIndexTool.display_name="Index_Manager" --tool.SearchIndexTool.description="Custom search tool" --tool.GetShardsTool.args.index.description="Custom description" 
+python -m mcp_server_opensearch --tool.ListIndexTool.display_name="Index_Manager" --tool.SearchIndexTool.description="Custom search tool" --tool.GetShardsTool.args.index.description="Custom description" --tool.SearchIndexTool.max_size_limit=20
 ```
 
 ### Priority
