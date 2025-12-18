@@ -538,3 +538,233 @@ class TestOpenSearchClientContextManager:
 
         # Verify all three clients were created
         assert mock_opensearch.call_count == 3
+
+class TestHeaderBasedBasicAuth:
+    """Tests for Basic authentication via Authorization header."""
+
+    def setup_method(self):
+        """Setup before each test method."""
+        # Clear environment variables
+        for key in [
+            'OPENSEARCH_USERNAME',
+            'OPENSEARCH_PASSWORD',
+            'AWS_REGION',
+            'OPENSEARCH_URL',
+            'OPENSEARCH_NO_AUTH',
+            'OPENSEARCH_HEADER_AUTH',
+        ]:
+            if key in os.environ:
+                del os.environ[key]
+
+        # Set global mode for tests
+        from mcp_server_opensearch.global_state import set_mode
+
+        set_mode('single')
+
+    @patch('opensearch.client.boto3.Session')
+    @patch('opensearch.client.request_ctx')
+    @patch('opensearch.client.AsyncOpenSearch')
+    def test_basic_auth_from_authorization_header(
+        self, mock_opensearch, mock_request_ctx, mock_boto_session
+    ):
+        """Test Basic auth extraction from Authorization header."""
+        import base64
+        from starlette.requests import Request
+
+        # Set required environment variables
+        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
+        os.environ['OPENSEARCH_HEADER_AUTH'] = 'true'
+
+        # Mock boto3 Session to return None for credentials
+        mock_session = Mock()
+        mock_session.Session().return_value = None
+        mock_boto_session.return_value = mock_session
+
+        # Create mock request with Authorization header
+        username = 'header-user'
+        password = 'header-password'
+        credentials = f'{username}:{password}'
+        encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+        
+        mock_request = Mock(spec=Request)
+        mock_request.headers = {'authorization': f'Basic {encoded_credentials}'}
+
+        # Mock request context
+        mock_context = Mock()
+        mock_context.request = mock_request
+        mock_request_ctx.get.return_value = mock_context
+
+        # Mock OpenSearch client
+        mock_client = Mock()
+        mock_opensearch.return_value = mock_client
+
+        # Execute
+        client = initialize_client(baseToolArgs(opensearch_cluster_name=''))
+
+        # Assert
+        assert client == mock_client
+        # Verify Basic auth was used from header
+        call_kwargs = mock_opensearch.call_args[1]
+        assert call_kwargs['http_auth'] == (username, password)
+
+    @patch('opensearch.client.boto3.Session')
+    @patch('opensearch.client.request_ctx')
+    @patch('opensearch.client.AsyncOpenSearch')
+    def test_basic_auth_header_overrides_env_vars(
+        self, mock_opensearch, mock_request_ctx, mock_boto_session
+    ):
+        """Test that Authorization header overrides environment variables."""
+        import base64
+        from starlette.requests import Request
+
+        # Set environment variables with different credentials
+        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
+        os.environ['OPENSEARCH_USERNAME'] = 'env-user'
+        os.environ['OPENSEARCH_PASSWORD'] = 'env-password'
+        os.environ['OPENSEARCH_HEADER_AUTH'] = 'true'
+
+        # Mock boto3 Session to return None for credentials
+        mock_session = Mock()
+        mock_session.get_credentials.return_value = None
+        mock_boto_session.return_value = mock_session
+
+        # Create mock request with Authorization header (different credentials)
+        header_username = 'header-user'
+        header_password = 'header-password'
+        credentials = f'{header_username}:{header_password}'
+        encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+        
+        mock_request = Mock(spec=Request)
+        mock_request.headers = {'authorization': f'Basic {encoded_credentials}'}
+
+        # Mock request context
+        mock_context = Mock()
+        mock_context.request = mock_request
+        mock_request_ctx.get.return_value = mock_context
+
+        # Mock OpenSearch client
+        mock_client = Mock()
+        mock_opensearch.return_value = mock_client
+
+        # Execute
+        client = initialize_client(baseToolArgs(opensearch_cluster_name=''))
+
+        # Assert - header credentials should be used, not env var credentials
+        assert client == mock_client
+        call_kwargs = mock_opensearch.call_args[1]
+        assert call_kwargs['http_auth'] == (header_username, header_password)
+
+    @patch('opensearch.client.request_ctx')
+    @patch('opensearch.client.AsyncOpenSearch')
+    @patch('opensearch.client.get_aws_region_single_mode')
+    def test_basic_auth_falls_back_to_env_when_no_header(
+        self, mock_get_region, mock_opensearch, mock_request_ctx
+    ):
+        """Test that env vars are used when Authorization header is not present."""
+        # Set environment variables
+        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
+        os.environ['OPENSEARCH_USERNAME'] = 'env-user'
+        os.environ['OPENSEARCH_PASSWORD'] = 'env-password'
+        os.environ['OPENSEARCH_HEADER_AUTH'] = 'true'
+
+        # Mock AWS region
+        mock_get_region.return_value = 'us-east-1'
+
+        # Create mock request without Authorization header
+        mock_request = Mock()
+        mock_request.headers = {}
+
+        # Mock request context
+        mock_context = Mock()
+        mock_context.request = mock_request
+        mock_request_ctx.get.return_value = mock_context
+
+        # Mock OpenSearch client
+        mock_client = Mock()
+        mock_opensearch.return_value = mock_client
+
+        # Execute
+        client = initialize_client(baseToolArgs(opensearch_cluster_name=''))
+
+        # Assert - env var credentials should be used
+        assert client == mock_client
+        call_kwargs = mock_opensearch.call_args[1]
+        assert call_kwargs['http_auth'] == ('env-user', 'env-password')
+
+    @patch('opensearch.client.request_ctx')
+    @patch('opensearch.client.AsyncOpenSearch')
+    @patch('opensearch.client.get_aws_region_single_mode')
+    def test_malformed_authorization_header(
+        self, mock_get_region, mock_opensearch, mock_request_ctx
+    ):
+        """Test that malformed Authorization header is gracefully ignored."""
+        # Set environment variables
+        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
+        os.environ['OPENSEARCH_USERNAME'] = 'env-user'
+        os.environ['OPENSEARCH_PASSWORD'] = 'env-password'
+        os.environ['OPENSEARCH_HEADER_AUTH'] = 'true'
+
+        # Mock AWS region
+        mock_get_region.return_value = 'us-east-1'
+
+        # Create mock request with malformed Authorization header
+        mock_request = Mock()
+        mock_request.headers = {'authorization': 'Basic invalid-base64!!!'}
+
+        # Mock request context
+        mock_context = Mock()
+        mock_context.request = mock_request
+        mock_request_ctx.get.return_value = mock_context
+
+        # Mock OpenSearch client
+        mock_client = Mock()
+        mock_opensearch.return_value = mock_client
+
+        # Execute
+        client = initialize_client(baseToolArgs(opensearch_cluster_name=''))
+
+        # Assert - should fall back to env var credentials
+        assert client == mock_client
+        call_kwargs = mock_opensearch.call_args[1]
+        assert call_kwargs['http_auth'] == ('env-user', 'env-password')
+
+    @patch('opensearch.client.request_ctx')
+    @patch('opensearch.client.AsyncOpenSearch')
+    @patch('opensearch.client.get_aws_region_single_mode')
+    def test_authorization_header_without_colon(
+        self, mock_get_region, mock_opensearch, mock_request_ctx
+    ):
+        """Test Authorization header with credentials that don't contain a colon."""
+        import base64
+
+        # Set environment variables
+        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
+        os.environ['OPENSEARCH_USERNAME'] = 'env-user'
+        os.environ['OPENSEARCH_PASSWORD'] = 'env-password'
+        os.environ['OPENSEARCH_HEADER_AUTH'] = 'true'
+
+        # Mock AWS region
+        mock_get_region.return_value = 'us-east-1'
+
+        # Create mock request with Authorization header without colon
+        mock_request = Mock()
+        credentials = 'usernameonly'
+        encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
+        mock_request.headers = {'authorization': f'Basic {encoded_credentials}'}
+
+        # Mock request context
+        mock_context = Mock()
+        mock_context.request = mock_request
+        mock_request_ctx.get.return_value = mock_context
+
+        # Mock OpenSearch client
+        mock_client = Mock()
+        mock_opensearch.return_value = mock_client
+
+        # Execute
+        client = initialize_client(baseToolArgs(opensearch_cluster_name=''))
+
+        # Assert - should fall back to env var credentials since format is invalid
+        assert client == mock_client
+        call_kwargs = mock_opensearch.call_args[1]
+        assert call_kwargs['http_auth'] == ('env-user', 'env-password')

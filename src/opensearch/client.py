@@ -151,6 +151,7 @@ def _initialize_client_single_mode() -> AsyncOpenSearch:
     When OPENSEARCH_HEADER_AUTH=true, headers are preferred:
     - opensearch-url, aws-region, aws-access-key-id, aws-secret-access-key,
       aws-session-token, aws-service-name
+    - Authorization: For Basic auth (format: Basic <base64(username:password)>)
 
     Returns:
         OpenSearch: An initialized OpenSearch client instance
@@ -208,6 +209,12 @@ def _initialize_client_single_mode() -> AsyncOpenSearch:
             header_region = header_auth.get('aws_region')
             if header_region:
                 aws_region = header_region
+            # Override Basic auth credentials if provided in headers
+            header_username = header_auth.get('opensearch_username')
+            header_password = header_auth.get('opensearch_password')
+            if header_username and header_password:
+                opensearch_username = header_username
+                opensearch_password = header_password
 
         # Validate URL after potential header override (must come from either env or headers)
         if not opensearch_url or not opensearch_url.strip():
@@ -322,6 +329,12 @@ def _initialize_client_multi_mode(cluster_info: ClusterInfo) -> AsyncOpenSearch:
             header_region = header_auth.get('aws_region')
             if header_region:
                 aws_region = header_region
+            # Override Basic auth credentials if provided in headers
+            header_username = header_auth.get('opensearch_username')
+            header_password = header_auth.get('opensearch_password')
+            if header_username and header_password:
+                opensearch_username = header_username
+                opensearch_password = header_password
 
         # Use common client creation function
         return _create_opensearch_client(
@@ -657,6 +670,8 @@ def _get_auth_from_headers() -> Dict[str, Optional[str]]:
         - aws_secret_access_key: AWS secret access key
         - aws_session_token: AWS session token
         - aws_service_name: AWS service name (es or aoss)
+        - opensearch_username: Username from Basic auth (Authorization header)
+        - opensearch_password: Password from Basic auth (Authorization header)
         All values are None if headers are not available or not set.
     """
     result: Dict[str, Optional[str]] = {
@@ -666,6 +681,8 @@ def _get_auth_from_headers() -> Dict[str, Optional[str]]:
         'aws_secret_access_key': None,
         'aws_session_token': None,
         'aws_service_name': None,
+        'opensearch_username': None,
+        'opensearch_password': None,
     }
 
     try:
@@ -682,6 +699,21 @@ def _get_auth_from_headers() -> Dict[str, Optional[str]]:
                 )
                 result['aws_session_token'] = headers.get('aws-session-token', '').strip() or None
                 result['aws_service_name'] = headers.get('aws-service-name', '').strip() or None
+                
+                # Extract Basic auth from Authorization header
+                auth_header = headers.get('authorization', '').strip()
+                if auth_header and auth_header.lower().startswith('basic '):
+                    import base64
+                    # Extract the base64 encoded credentials
+                    encoded_credentials = auth_header[6:]  # Skip 'Basic '
+                    decoded_bytes = base64.b64decode(encoded_credentials)
+                    decoded_credentials = decoded_bytes.decode('utf-8')
+                    
+                    # Split into username and password
+                    if ':' in decoded_credentials:
+                        username, password = decoded_credentials.split(':', 1)
+                        result['opensearch_username'] = username
+                        result['opensearch_password'] = password
     except Exception as e:
         logger.debug(f'Could not read headers from request context: {e}')
 

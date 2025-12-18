@@ -241,12 +241,20 @@ export OPENSEARCH_HEADER_AUTH="true"
 ```
 
 **Headers when making requests:**
+
+For AWS authentication:
+
 - `opensearch-url`: OpenSearch cluster endpoint URL (if not set via env var)
 - `aws-region`: AWS region
 - `aws-access-key-id`: AWS access key ID
 - `aws-secret-access-key`: AWS secret access key
 - `aws-session-token`: AWS session token (for temporary credentials)
 - `aws-service-name`: AWS service name - `es` for OpenSearch or `aoss` for OpenSearch Serverless (defaults to `es`)
+
+For Basic authentication:
+
+- `Authorization`: HTTP Basic authentication header (format: `Basic <base64(username:password)>`)
+  - Example: `Authorization: Basic YWRtaW46cGFzc3dvcmQ=` (where `YWRtaW46cGFzc3dvcmQ=` is base64-encoded `admin:password`)
 
 **Note:** When `OPENSEARCH_HEADER_AUTH=true` (single mode) or `opensearch_header_auth: true` (multi mode), headers take priority over environment variables or cluster configuration values. If a header is not provided, the system falls back to the corresponding environment variable (single mode) or cluster configuration value (multi mode).
 
