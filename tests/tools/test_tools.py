@@ -1092,9 +1092,9 @@ class TestTools:
         assert len(result) == 1
         assert result[0]['type'] == 'text'
         assert 'Detailed node information for all nodes' in result[0]['text']
-        assert '"name": "node-1"' in result[0]['text']
-        assert '"name": "node-2"' in result[0]['text']
-        assert '"cluster_name": "test-cluster"' in result[0]['text']
+        assert '"name":"node-1"' in result[0]['text']
+        assert '"name":"node-2"' in result[0]['text']
+        assert '"cluster_name":"test-cluster"' in result[0]['text']
         self.mock_client.transport.perform_request.assert_called_once_with(
             method='GET', url='/_nodes'
         )
