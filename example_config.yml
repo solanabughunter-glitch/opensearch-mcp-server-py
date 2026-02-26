@@ -45,7 +45,7 @@ tools:
     display_name: "Super_Searcher"
     args:
       index: "Custom description for the 'index' argument in SearchIndexTool."
-      query: "Explain what kind of query JSON is expected here."
+      query_dsl: "Explain what kind of query DSL JSON is expected here."
   GetShardsTool:
     description: "A better description to get information about shards in OpenSearch."
     args:

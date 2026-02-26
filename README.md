@@ -84,7 +84,7 @@ Advanced analysis tools for data analysis and troubleshooting.
 
   - `opensearch_url` (optional): The OpenSearch cluster URL to connect to
   - `index` (required): The name of the index to search in
-  - `query` (required): The search query in OpenSearch Query DSL format
+  - `query_dsl` (required): The search query in OpenSearch Query DSL format
   - `format` (optional): The format of SearchIndexTool response. options are csv and json
   - `size` (optional): The size of SearchIndexTool response. Default is 10, maximum is 100 (configurable). To change the maximum limit, set `max_size_limit` via CLI arguments or config file. See [Tool Customization](USER_GUIDE.md#tool-customization) for details.
 

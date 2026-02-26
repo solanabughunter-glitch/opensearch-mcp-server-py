@@ -56,7 +56,7 @@ async def search_index(args: SearchIndexArgs) -> json:
     from tools.tools import TOOL_REGISTRY
 
     async with get_opensearch_client(args) as client:
-        query = normalize_scientific_notation(args.query)
+        query = normalize_scientific_notation(args.query_dsl)
         
         # Limit size to maximum of 100
         tool_info = TOOL_REGISTRY.get('SearchIndexTool', {})

@@ -110,13 +110,13 @@ class TestOpenSearchHelper:
 
         # Execute
         result = await self.search_index(
-            SearchIndexArgs(index='test-index', query=test_query, opensearch_cluster_name='')
+            SearchIndexArgs(index='test-index', query_dsl=test_query, opensearch_cluster_name='')
         )
 
         # Assert
         assert result == mock_response
         mock_get_client.assert_called_once_with(
-            SearchIndexArgs(index='test-index', query=test_query, opensearch_cluster_name='')
+            SearchIndexArgs(index='test-index', query_dsl=test_query, opensearch_cluster_name='')
         )
         # The search_index function adds size to the query body (default 10, max 100)
         expected_body = {'query': {'match_all': {}}, 'size': 10}
@@ -210,7 +210,7 @@ class TestOpenSearchHelper:
         with pytest.raises(Exception) as exc_info:
             await self.search_index(
                 SearchIndexArgs(
-                    index='test-index', query={'invalid': 'query'}, opensearch_cluster_name=''
+                    index='test-index', query_dsl={'invalid': 'query'}, opensearch_cluster_name=''
                 )
             )
         assert str(exc_info.value) == 'Invalid query'

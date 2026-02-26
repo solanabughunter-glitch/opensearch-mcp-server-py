@@ -200,7 +200,7 @@ The LLM needs to have context about the available cluster names to make informed
 {
   "opensearch_cluster_name": "production",
   "index": "users",
-  "query": {
+  "query_dsl": {
     "match": {
       "status": "active"
     }

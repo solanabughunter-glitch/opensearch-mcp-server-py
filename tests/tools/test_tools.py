@@ -298,7 +298,7 @@ class TestTools:
         self.mock_client.search.return_value = mock_results
         # Execute
         args = self.SearchIndexArgs(
-            index='test-index', query={'match_all': {}}, opensearch_cluster_name=''
+            index='test-index', query_dsl={'match_all': {}}, opensearch_cluster_name=''
         )
         result = await self._search_index_tool(args)
         # Assert
@@ -318,7 +318,7 @@ class TestTools:
         self.mock_client.search.side_effect = Exception('Test error')
         # Execute
         args = self.SearchIndexArgs(
-            index='test-index', query={'match_all': {}}, opensearch_cluster_name=''
+            index='test-index', query_dsl={'match_all': {}}, opensearch_cluster_name=''
         )
         result = await self._search_index_tool(args)
         # Assert
@@ -1198,7 +1198,7 @@ class TestTools:
         assert self.GetIndexMappingArgs(index='test', opensearch_cluster_name='').index == 'test'
         assert (
             self.SearchIndexArgs(
-                index='test', query={'match': {}}, opensearch_cluster_name=''
+                index='test', query_dsl={'match': {}}, opensearch_cluster_name=''
             ).index
             == 'test'
         )
