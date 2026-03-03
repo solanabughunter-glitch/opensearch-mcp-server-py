@@ -691,6 +691,64 @@ class TestHeaderBasedBasicAuth:
         call_kwargs = mock_opensearch.call_args[1]
         assert call_kwargs['http_auth'] == ('env-user', 'env-password')
 
+
+class TestHeaderBasedBearerAuth:
+    """Tests for Bearer authentication via Authorization header."""
+
+    def setup_method(self):
+        """Setup before each test method."""
+        # Clear environment variables
+        for key in [
+            'OPENSEARCH_USERNAME',
+            'OPENSEARCH_PASSWORD',
+            'AWS_REGION',
+            'OPENSEARCH_URL',
+            'OPENSEARCH_NO_AUTH',
+            'OPENSEARCH_HEADER_AUTH',
+        ]:
+            if key in os.environ:
+                del os.environ[key]
+
+        # Set global mode for tests
+        from mcp_server_opensearch.global_state import set_mode
+
+        set_mode('single')
+
+    @patch('opensearch.client.request_ctx')
+    @patch('opensearch.client.AsyncOpenSearch')
+    def test_bearer_auth_from_authorization_header(
+        self, mock_opensearch, mock_request_ctx
+    ):
+        """Test Bearer auth passthrough from Authorization header."""
+        from starlette.requests import Request
+
+        # Set required environment variables
+        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
+        os.environ['OPENSEARCH_HEADER_AUTH'] = 'true'
+
+        # Create mock request with Authorization Bearer header
+        bearer_token = 'test-bearer-token'
+        mock_request = Mock(spec=Request)
+        mock_request.headers = {'authorization': f'Bearer {bearer_token}'}
+
+        # Mock request context
+        mock_context = Mock()
+        mock_context.request = mock_request
+        mock_request_ctx.get.return_value = mock_context
+
+        # Mock OpenSearch client
+        mock_client = Mock()
+        mock_opensearch.return_value = mock_client
+
+        # Execute
+        client = initialize_client(baseToolArgs(opensearch_cluster_name=''))
+
+        # Assert
+        assert client == mock_client
+        call_kwargs = mock_opensearch.call_args[1]
+        assert call_kwargs['headers'] == {'Authorization': f'Bearer {bearer_token}'}
+        assert 'http_auth' not in call_kwargs
+
     @patch('opensearch.client.request_ctx')
     @patch('opensearch.client.AsyncOpenSearch')
     @patch('opensearch.client.get_aws_region_single_mode')

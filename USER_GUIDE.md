@@ -257,6 +257,10 @@ For Basic authentication:
 - `Authorization`: HTTP Basic authentication header (format: `Basic <base64(username:password)>`)
   - Example: `Authorization: Basic YWRtaW46cGFzc3dvcmQ=` (where `YWRtaW46cGFzc3dvcmQ=` is base64-encoded `admin:password`)
 
+For Bearer authentication:
+
+- `Authorization`: HTTP Bearer authentication header (format: `Bearer <token>`)
+
 **Note:** When `OPENSEARCH_HEADER_AUTH=true` (single mode) or `opensearch_header_auth: true` (multi mode), headers take priority over environment variables or cluster configuration values. If a header is not provided, the system falls back to the corresponding environment variable (single mode) or cluster configuration value (multi mode).
 
 #### IAM Role Authentication
