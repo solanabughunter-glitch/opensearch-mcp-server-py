@@ -189,6 +189,10 @@ def process_tool_filter(
             'CreateSearchConfigurationTool',
             'GetSearchConfigurationTool',
             'DeleteSearchConfigurationTool',
+            'GetQuerySetTool',
+            'CreateQuerySetTool',
+            'SampleQuerySetTool',
+            'DeleteQuerySetTool',
         ]
 
         # Build search_relevance tools list using display names

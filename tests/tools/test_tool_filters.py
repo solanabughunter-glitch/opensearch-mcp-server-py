@@ -434,6 +434,10 @@ class TestProcessToolFilter:
                 'display_name': 'DeleteSearchConfigurationTool',
                 'http_methods': 'DELETE',
             },
+            'GetQuerySetTool': {'display_name': 'GetQuerySetTool', 'http_methods': 'GET'},
+            'CreateQuerySetTool': {'display_name': 'CreateQuerySetTool', 'http_methods': 'PUT'},
+            'SampleQuerySetTool': {'display_name': 'SampleQuerySetTool', 'http_methods': 'POST'},
+            'DeleteQuerySetTool': {'display_name': 'DeleteQuerySetTool', 'http_methods': 'DELETE'},
         }
         process_tool_filter(tool_registry=registry, allow_write=True)
 
@@ -442,6 +446,10 @@ class TestProcessToolFilter:
         assert 'CreateSearchConfigurationTool' not in registry
         assert 'GetSearchConfigurationTool' not in registry
         assert 'DeleteSearchConfigurationTool' not in registry
+        assert 'GetQuerySetTool' not in registry
+        assert 'CreateQuerySetTool' not in registry
+        assert 'SampleQuerySetTool' not in registry
+        assert 'DeleteQuerySetTool' not in registry
 
     def test_search_relevance_category_can_be_enabled(self):
         """search_relevance tools are exposed when the category is explicitly enabled."""
@@ -459,6 +467,10 @@ class TestProcessToolFilter:
                 'display_name': 'DeleteSearchConfigurationTool',
                 'http_methods': 'DELETE',
             },
+            'GetQuerySetTool': {'display_name': 'GetQuerySetTool', 'http_methods': 'GET'},
+            'CreateQuerySetTool': {'display_name': 'CreateQuerySetTool', 'http_methods': 'PUT'},
+            'SampleQuerySetTool': {'display_name': 'SampleQuerySetTool', 'http_methods': 'POST'},
+            'DeleteQuerySetTool': {'display_name': 'DeleteQuerySetTool', 'http_methods': 'DELETE'},
         }
         process_tool_filter(
             tool_registry=registry,
@@ -470,6 +482,10 @@ class TestProcessToolFilter:
         assert 'CreateSearchConfigurationTool' in registry
         assert 'GetSearchConfigurationTool' in registry
         assert 'DeleteSearchConfigurationTool' in registry
+        assert 'GetQuerySetTool' in registry
+        assert 'CreateQuerySetTool' in registry
+        assert 'SampleQuerySetTool' in registry
+        assert 'DeleteQuerySetTool' in registry
 
 
 class TestAllowWriteSettings:
