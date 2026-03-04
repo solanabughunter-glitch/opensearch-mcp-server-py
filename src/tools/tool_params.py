@@ -379,3 +379,85 @@ class DeleteQuerySetArgs(baseToolArgs):
                 {'query_set_id': 'my-query-set-id'},
             ]
         }
+
+
+class GetJudgmentListArgs(baseToolArgs):
+    """Arguments for the GetJudgmentListTool."""
+
+    judgment_id: str = Field(description='ID of the judgment list to retrieve')
+
+    class Config:
+        json_schema_extra = {'examples': [{'judgment_id': 'abc123'}]}
+
+
+class CreateJudgmentListArgs(baseToolArgs):
+    """Arguments for the CreateJudgmentListTool."""
+
+    name: str = Field(description='Name of the judgment list')
+    judgment_ratings: str = Field(
+        description='JSON array of query-ratings objects. Each object must have '
+        '"query" (string) and "ratings" (array of {"docId": string, "rating": number}). '
+        'Example: [{"query": "laptop", "ratings": [{"docId": "doc1", "rating": 3}, {"docId": "doc2", "rating": 1}]}]'
+    )
+    description: str = Field(default='', description='Optional description of the judgment list')
+
+    class Config:
+        json_schema_extra = {
+            'examples': [
+                {
+                    'name': 'my-judgments',
+                    'judgment_ratings': '[{"query": "laptop", "ratings": [{"docId": "doc1", "rating": 3}, {"docId": "doc2", "rating": 1}]}]',
+                },
+                {
+                    'name': 'product-judgments',
+                    'description': 'Manual relevance judgments for product search',
+                    'judgment_ratings': '[{"query": "wireless headphones", "ratings": [{"docId": "prod-001", "rating": 3}, {"docId": "prod-002", "rating": 2}]}, {"query": "4k monitor", "ratings": [{"docId": "prod-010", "rating": 3}]}]',
+                },
+            ]
+        }
+
+
+class CreateUBIJudgmentListArgs(baseToolArgs):
+    """Arguments for the CreateUBIJudgmentListTool."""
+
+    name: str = Field(description='Name of the judgment list')
+    click_model: str = Field(
+        description='Click model used to derive relevance from UBI click data. '
+        'Common value: "coec" (Clicks Over Expected Clicks)'
+    )
+    max_rank: int = Field(
+        default=20,
+        description='Maximum rank position to consider when computing click signals (default: 20)',
+        ge=1,
+    )
+    start_date: Optional[str] = Field(
+        default=None,
+        description='Start date for UBI event filtering in ISO format (YYYY-MM-DD)',
+    )
+    end_date: Optional[str] = Field(
+        default=None,
+        description='End date for UBI event filtering in ISO format (YYYY-MM-DD)',
+    )
+
+    class Config:
+        json_schema_extra = {
+            'examples': [
+                {'name': 'ubi-judgments', 'click_model': 'coec'},
+                {
+                    'name': 'ubi-judgments-q1',
+                    'click_model': 'coec',
+                    'max_rank': 20,
+                    'start_date': '2024-01-01',
+                    'end_date': '2024-03-31',
+                },
+            ]
+        }
+
+
+class DeleteJudgmentListArgs(baseToolArgs):
+    """Arguments for the DeleteJudgmentListTool."""
+
+    judgment_id: str = Field(description='ID of the judgment list to delete')
+
+    class Config:
+        json_schema_extra = {'examples': [{'judgment_id': 'abc123'}]}

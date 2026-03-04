@@ -657,6 +657,104 @@ async def delete_search_configuration(args: DeleteSearchConfigurationArgs) -> js
         return response
 
 
+async def get_judgment_list(args: GetJudgmentListArgs) -> json:
+    """Retrieve a judgment by ID via the Search Relevance plugin.
+
+    Args:
+        args: GetJudgmentListArgs containing the judgment_id
+
+    Returns:
+        json: OpenSearch response with the judgment details
+    """
+    from .client import get_opensearch_client
+
+    async with get_opensearch_client(args) as client:
+        response = await client.plugins.search_relevance.get_judgments(
+            judgment_id=args.judgment_id
+        )
+        return response
+
+
+async def create_judgment_list(args: CreateJudgmentListArgs) -> json:
+    """Create a judgment list with manual relevance ratings via the Search Relevance plugin.
+
+    Args:
+        args: CreateJudgmentListArgs containing name, judgment_ratings (JSON string), and optional description
+
+    Returns:
+        json: OpenSearch response with the created judgment ID
+    """
+    from .client import get_opensearch_client
+
+    judgment_ratings = (
+        json.loads(args.judgment_ratings)
+        if isinstance(args.judgment_ratings, str)
+        else args.judgment_ratings
+    )
+    if not isinstance(judgment_ratings, list):
+        raise ValueError(
+            'judgment_ratings must be a JSON array of query-ratings objects, '
+            'e.g. [{"query": "laptop", "ratings": [{"docId": "doc1", "rating": 3}]}]'
+        )
+
+    body = {
+        'name': args.name,
+        'type': 'IMPORT_JUDGMENT',
+        'judgmentRatings': judgment_ratings,
+    }
+    if args.description:
+        body['description'] = args.description
+
+    async with get_opensearch_client(args) as client:
+        response = await client.plugins.search_relevance.put_judgments(body=body)
+        return response
+
+
+async def create_ubi_judgment_list(args: CreateUBIJudgmentListArgs) -> json:
+    """Create a judgment list by mining relevance signals from UBI click data.
+
+    Args:
+        args: CreateUBIJudgmentListArgs containing name, click_model, max_rank, and optional date range
+
+    Returns:
+        json: OpenSearch response with the created judgment ID and processing status
+    """
+    from .client import get_opensearch_client
+
+    body = {
+        'name': args.name,
+        'type': 'UBI_JUDGMENT',
+        'clickModel': args.click_model,
+        'maxRank': args.max_rank,
+    }
+    if args.start_date:
+        body['startDate'] = args.start_date
+    if args.end_date:
+        body['endDate'] = args.end_date
+
+    async with get_opensearch_client(args) as client:
+        response = await client.plugins.search_relevance.put_judgments(body=body)
+        return response
+
+
+async def delete_judgment_list(args: DeleteJudgmentListArgs) -> json:
+    """Delete a judgment by ID via the Search Relevance plugin.
+
+    Args:
+        args: DeleteJudgmentListArgs containing the judgment_id
+
+    Returns:
+        json: OpenSearch response confirming deletion
+    """
+    from .client import get_opensearch_client
+
+    async with get_opensearch_client(args) as client:
+        response = await client.plugins.search_relevance.delete_judgments(
+            judgment_id=args.judgment_id
+        )
+        return response
+
+
 def validate_json_string(value: str) -> None:
     """Validate that a string is valid JSON, raising ValueError with a concise message if not.
 

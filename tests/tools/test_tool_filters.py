@@ -438,6 +438,13 @@ class TestProcessToolFilter:
             'CreateQuerySetTool': {'display_name': 'CreateQuerySetTool', 'http_methods': 'PUT'},
             'SampleQuerySetTool': {'display_name': 'SampleQuerySetTool', 'http_methods': 'POST'},
             'DeleteQuerySetTool': {'display_name': 'DeleteQuerySetTool', 'http_methods': 'DELETE'},
+            'GetJudgmentListTool': {'display_name': 'GetJudgmentListTool', 'http_methods': 'GET'},
+            'CreateJudgmentListTool': {'display_name': 'CreateJudgmentListTool', 'http_methods': 'PUT'},
+            'CreateUBIJudgmentListTool': {
+                'display_name': 'CreateUBIJudgmentListTool',
+                'http_methods': 'PUT',
+            },
+            'DeleteJudgmentListTool': {'display_name': 'DeleteJudgmentListTool', 'http_methods': 'DELETE'},
         }
         process_tool_filter(tool_registry=registry, allow_write=True)
 
@@ -450,6 +457,10 @@ class TestProcessToolFilter:
         assert 'CreateQuerySetTool' not in registry
         assert 'SampleQuerySetTool' not in registry
         assert 'DeleteQuerySetTool' not in registry
+        assert 'GetJudgmentListTool' not in registry
+        assert 'CreateJudgmentListTool' not in registry
+        assert 'CreateUBIJudgmentListTool' not in registry
+        assert 'DeleteJudgmentListTool' not in registry
 
     def test_search_relevance_category_can_be_enabled(self):
         """search_relevance tools are exposed when the category is explicitly enabled."""
@@ -471,6 +482,13 @@ class TestProcessToolFilter:
             'CreateQuerySetTool': {'display_name': 'CreateQuerySetTool', 'http_methods': 'PUT'},
             'SampleQuerySetTool': {'display_name': 'SampleQuerySetTool', 'http_methods': 'POST'},
             'DeleteQuerySetTool': {'display_name': 'DeleteQuerySetTool', 'http_methods': 'DELETE'},
+            'GetJudgmentListTool': {'display_name': 'GetJudgmentListTool', 'http_methods': 'GET'},
+            'CreateJudgmentListTool': {'display_name': 'CreateJudgmentListTool', 'http_methods': 'PUT'},
+            'CreateUBIJudgmentListTool': {
+                'display_name': 'CreateUBIJudgmentListTool',
+                'http_methods': 'PUT',
+            },
+            'DeleteJudgmentListTool': {'display_name': 'DeleteJudgmentListTool', 'http_methods': 'DELETE'},
         }
         process_tool_filter(
             tool_registry=registry,
@@ -486,6 +504,10 @@ class TestProcessToolFilter:
         assert 'CreateQuerySetTool' in registry
         assert 'SampleQuerySetTool' in registry
         assert 'DeleteQuerySetTool' in registry
+        assert 'GetJudgmentListTool' in registry
+        assert 'CreateJudgmentListTool' in registry
+        assert 'CreateUBIJudgmentListTool' in registry
+        assert 'DeleteJudgmentListTool' in registry
 
 
 class TestAllowWriteSettings:

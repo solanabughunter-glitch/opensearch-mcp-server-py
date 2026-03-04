@@ -193,6 +193,11 @@ def process_tool_filter(
             'CreateQuerySetTool',
             'SampleQuerySetTool',
             'DeleteQuerySetTool',
+            'GetJudgmentListTool',
+            'CreateJudgmentListTool',
+            'CreateUBIJudgmentListTool',
+            'CreateLLMJudgmentListTool',
+            'DeleteJudgmentListTool',
         ]
 
         # Build search_relevance tools list using display names
