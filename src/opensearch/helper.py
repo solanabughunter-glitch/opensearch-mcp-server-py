@@ -737,6 +737,44 @@ async def create_ubi_judgment_list(args: CreateUBIJudgmentListArgs) -> json:
         return response
 
 
+async def create_llm_judgment_list(args: CreateLLMJudgmentListArgs) -> json:
+    """Create a judgment list using an LLM model via the Search Relevance plugin.
+
+    For each query in the query set, the top k documents are retrieved using the
+    specified search configuration and rated by the LLM model.
+
+    Args:
+        args: CreateLLMJudgmentListArgs containing name, query_set_id, search_configuration_id,
+              model_id, size, and optional context_fields
+
+    Returns:
+        json: OpenSearch response with the created judgment ID and processing status
+    """
+    from .client import get_opensearch_client
+
+    context_fields = (
+        json.loads(args.context_fields)
+        if isinstance(args.context_fields, str)
+        else args.context_fields
+    )
+    if not isinstance(context_fields, list):
+        raise ValueError('context_fields must be a JSON array of field name strings, e.g. ["title", "description"]')
+
+    body = {
+        'name': args.name,
+        'type': 'LLM_JUDGMENT',
+        'querySetId': args.query_set_id,
+        'searchConfigurationList': [args.search_configuration_id],
+        'modelId': args.model_id,
+        'size': args.size,
+        'contextFields': context_fields,
+    }
+
+    async with get_opensearch_client(args) as client:
+        response = await client.plugins.search_relevance.put_judgments(body=body)
+        return response
+
+
 async def delete_judgment_list(args: DeleteJudgmentListArgs) -> json:
     """Delete a judgment by ID via the Search Relevance plugin.
 

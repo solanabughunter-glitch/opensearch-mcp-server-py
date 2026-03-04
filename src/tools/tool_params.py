@@ -454,6 +454,49 @@ class CreateUBIJudgmentListArgs(baseToolArgs):
         }
 
 
+class CreateLLMJudgmentListArgs(baseToolArgs):
+    """Arguments for the CreateLLMJudgmentListTool."""
+
+    name: str = Field(description='Name of the judgment list')
+    query_set_id: str = Field(description='ID of the query set to use for generating judgments')
+    search_configuration_id: str = Field(
+        description='ID of the search configuration that defines how documents are retrieved'
+    )
+    model_id: str = Field(
+        description='ID of the ML Commons model connector used to generate LLM relevance ratings'
+    )
+    size: int = Field(
+        default=5,
+        description='Number of top documents to retrieve per query for rating (default: 5)',
+        ge=1,
+    )
+    context_fields: str = Field(
+        default='[]',
+        description='JSON array of document field names to include as context for the LLM, e.g. ["title", "description"]. Defaults to all fields.',
+    )
+
+    class Config:
+        json_schema_extra = {
+            'examples': [
+                {
+                    'name': 'llm-judgments',
+                    'query_set_id': '5f0115ad-94b9-403a-912f-3e762870ccf6',
+                    'search_configuration_id': '2f90d4fd-bd5e-450f-95bb-eabe4a740bd1',
+                    'model_id': 'N8AE1osB0jLkkocYjz7D',
+                    'size': 5,
+                },
+                {
+                    'name': 'llm-judgments-with-context',
+                    'query_set_id': '5f0115ad-94b9-403a-912f-3e762870ccf6',
+                    'search_configuration_id': '2f90d4fd-bd5e-450f-95bb-eabe4a740bd1',
+                    'model_id': 'N8AE1osB0jLkkocYjz7D',
+                    'size': 10,
+                    'context_fields': '["title", "description"]',
+                },
+            ]
+        }
+
+
 class DeleteJudgmentListArgs(baseToolArgs):
     """Arguments for the DeleteJudgmentListTool."""
 

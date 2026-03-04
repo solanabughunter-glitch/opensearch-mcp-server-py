@@ -4,6 +4,7 @@
 import json
 from .tool_params import (
     CreateJudgmentListArgs,
+    CreateLLMJudgmentListArgs,
     CreateSearchConfigurationArgs,
     CreateUBIJudgmentListArgs,
     DeleteJudgmentListArgs,
@@ -35,6 +36,7 @@ from .utils import is_tool_compatible
 from opensearch.helper import (
     convert_search_results_to_csv,
     create_judgment_list,
+    create_llm_judgment_list,
     create_search_configuration,
     create_ubi_judgment_list,
     delete_judgment_list,
@@ -718,6 +720,28 @@ async def delete_judgment_list_tool(args: DeleteJudgmentListArgs) -> list[dict]:
         return log_tool_error('DeleteJudgmentListTool', e, 'deleting judgment list')
 
 
+async def create_llm_judgment_list_tool(args: CreateLLMJudgmentListArgs) -> list[dict]:
+    """Tool to create a judgment list using an LLM model via the Search Relevance plugin.
+
+    For each query in the query set, the top k documents are retrieved using the
+    specified search configuration and rated by the LLM model.
+
+    Args:
+        args: CreateLLMJudgmentListArgs containing name, query_set_id, search_configuration_id,
+              model_id, size, and optional context_fields
+
+    Returns:
+        list[dict]: Result of the creation operation in MCP format
+    """
+    try:
+        await check_tool_compatibility('CreateLLMJudgmentListTool', args)
+        result = await create_llm_judgment_list(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'LLM judgment list created:\n{formatted_result}'}]
+    except Exception as e:
+        return log_tool_error('CreateLLMJudgmentListTool', e, 'creating LLM judgment list')
+
+
 from .generic_api_tool import GenericOpenSearchApiArgs, generic_opensearch_api_tool
 
 
@@ -957,5 +981,16 @@ TOOL_REGISTRY = {
         'args_model': DeleteJudgmentListArgs,
         'min_version': '3.1.0',
         'http_methods': 'DELETE',
+    },
+    'CreateLLMJudgmentListTool': {
+        'display_name': 'CreateLLMJudgmentListTool',
+        'description': 'Creates a judgment list using an LLM model configured in OpenSearch ML Commons. '
+        'For each query in the specified query set, the top k documents are retrieved via the search '
+        'configuration and rated by the LLM for relevance.',
+        'input_schema': CreateLLMJudgmentListArgs.model_json_schema(),
+        'function': create_llm_judgment_list_tool,
+        'args_model': CreateLLMJudgmentListArgs,
+        'min_version': '3.1.0',
+        'http_methods': 'PUT',
     },
 }

@@ -30,20 +30,24 @@ class TestJudgmentTools:
         from tools.tools import (
             GetJudgmentListArgs,
             CreateJudgmentListArgs,
+            CreateLLMJudgmentListArgs,
             CreateUBIJudgmentListArgs,
             DeleteJudgmentListArgs,
             get_judgment_list_tool,
             create_judgment_list_tool,
+            create_llm_judgment_list_tool,
             create_ubi_judgment_list_tool,
             delete_judgment_list_tool,
         )
 
         self.GetJudgmentListArgs = GetJudgmentListArgs
         self.CreateJudgmentListArgs = CreateJudgmentListArgs
+        self.CreateLLMJudgmentListArgs = CreateLLMJudgmentListArgs
         self.CreateUBIJudgmentListArgs = CreateUBIJudgmentListArgs
         self.DeleteJudgmentListArgs = DeleteJudgmentListArgs
         self._get_judgment_list_tool = get_judgment_list_tool
         self._create_judgment_list_tool = create_judgment_list_tool
+        self._create_llm_judgment_list_tool = create_llm_judgment_list_tool
         self._create_ubi_judgment_list_tool = create_ubi_judgment_list_tool
         self._delete_judgment_list_tool = delete_judgment_list_tool
 
@@ -280,6 +284,98 @@ class TestJudgmentTools:
         assert 'Judgment not found' in result[0]['text']
 
     @pytest.mark.asyncio
+    async def test_create_llm_judgment_list_tool_success(self):
+        """Test successful creation of an LLM judgment list."""
+        mock_response = {'_id': 'llm-id', 'result': 'created', 'status': 'PROCESSING'}
+        self.mock_client.plugins.search_relevance.put_judgments.return_value = mock_response
+
+        result = await self._create_llm_judgment_list_tool(
+            self.CreateLLMJudgmentListArgs(
+                opensearch_cluster_name='',
+                name='llm-judgments',
+                query_set_id='qs-123',
+                search_configuration_id='sc-456',
+                model_id='model-789',
+                size=5,
+            )
+        )
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'LLM judgment list created' in result[0]['text']
+        assert 'llm-id' in result[0]['text']
+
+        call_kwargs = self.mock_client.plugins.search_relevance.put_judgments.call_args
+        body = call_kwargs.kwargs['body']
+        assert body['name'] == 'llm-judgments'
+        assert body['type'] == 'LLM_JUDGMENT'
+        assert body['querySetId'] == 'qs-123'
+        assert body['searchConfigurationList'] == ['sc-456']
+        assert body['modelId'] == 'model-789'
+        assert body['size'] == 5
+        assert body['contextFields'] == []
+
+    @pytest.mark.asyncio
+    async def test_create_llm_judgment_list_tool_with_context_fields(self):
+        """Test LLM judgment creation with explicit context fields."""
+        self.mock_client.plugins.search_relevance.put_judgments.return_value = {'_id': 'id1'}
+
+        await self._create_llm_judgment_list_tool(
+            self.CreateLLMJudgmentListArgs(
+                opensearch_cluster_name='',
+                name='llm-judgments',
+                query_set_id='qs-123',
+                search_configuration_id='sc-456',
+                model_id='model-789',
+                context_fields='["title", "description"]',
+            )
+        )
+
+        call_kwargs = self.mock_client.plugins.search_relevance.put_judgments.call_args
+        body = call_kwargs.kwargs['body']
+        assert body['contextFields'] == ['title', 'description']
+
+    @pytest.mark.asyncio
+    async def test_create_llm_judgment_list_tool_invalid_context_fields(self):
+        """Test that invalid context_fields JSON returns an error."""
+        result = await self._create_llm_judgment_list_tool(
+            self.CreateLLMJudgmentListArgs(
+                opensearch_cluster_name='',
+                name='llm-judgments',
+                query_set_id='qs-123',
+                search_configuration_id='sc-456',
+                model_id='model-789',
+                context_fields='not-valid-json',
+            )
+        )
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Error creating LLM judgment list' in result[0]['text']
+
+    @pytest.mark.asyncio
+    async def test_create_llm_judgment_list_tool_error(self):
+        """Test error handling when creating an LLM judgment list fails."""
+        self.mock_client.plugins.search_relevance.put_judgments.side_effect = Exception(
+            'Model not found'
+        )
+
+        result = await self._create_llm_judgment_list_tool(
+            self.CreateLLMJudgmentListArgs(
+                opensearch_cluster_name='',
+                name='llm-judgments',
+                query_set_id='qs-123',
+                search_configuration_id='sc-456',
+                model_id='invalid-model',
+            )
+        )
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Error creating LLM judgment list' in result[0]['text']
+        assert 'Model not found' in result[0]['text']
+
+    @pytest.mark.asyncio
     async def test_judgment_tools_registered_in_registry(self):
         """Test that all judgment tools are registered in the TOOL_REGISTRY."""
         import sys
@@ -292,9 +388,10 @@ class TestJudgmentTools:
         assert 'GetJudgmentListTool' in TOOL_REGISTRY
         assert 'CreateJudgmentListTool' in TOOL_REGISTRY
         assert 'CreateUBIJudgmentListTool' in TOOL_REGISTRY
+        assert 'CreateLLMJudgmentListTool' in TOOL_REGISTRY
         assert 'DeleteJudgmentListTool' in TOOL_REGISTRY
 
-        for tool_name in ['GetJudgmentListTool', 'CreateJudgmentListTool', 'CreateUBIJudgmentListTool', 'DeleteJudgmentListTool']:
+        for tool_name in ['GetJudgmentListTool', 'CreateJudgmentListTool', 'CreateUBIJudgmentListTool', 'CreateLLMJudgmentListTool', 'DeleteJudgmentListTool']:
             tool = TOOL_REGISTRY[tool_name]
             assert 'description' in tool
             assert 'input_schema' in tool

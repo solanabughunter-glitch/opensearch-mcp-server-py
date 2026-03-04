@@ -444,6 +444,10 @@ class TestProcessToolFilter:
                 'display_name': 'CreateUBIJudgmentListTool',
                 'http_methods': 'PUT',
             },
+            'CreateLLMJudgmentListTool': {
+                'display_name': 'CreateLLMJudgmentListTool',
+                'http_methods': 'PUT',
+            },
             'DeleteJudgmentListTool': {'display_name': 'DeleteJudgmentListTool', 'http_methods': 'DELETE'},
         }
         process_tool_filter(tool_registry=registry, allow_write=True)
@@ -460,6 +464,7 @@ class TestProcessToolFilter:
         assert 'GetJudgmentListTool' not in registry
         assert 'CreateJudgmentListTool' not in registry
         assert 'CreateUBIJudgmentListTool' not in registry
+        assert 'CreateLLMJudgmentListTool' not in registry
         assert 'DeleteJudgmentListTool' not in registry
 
     def test_search_relevance_category_can_be_enabled(self):
@@ -488,6 +493,10 @@ class TestProcessToolFilter:
                 'display_name': 'CreateUBIJudgmentListTool',
                 'http_methods': 'PUT',
             },
+            'CreateLLMJudgmentListTool': {
+                'display_name': 'CreateLLMJudgmentListTool',
+                'http_methods': 'PUT',
+            },
             'DeleteJudgmentListTool': {'display_name': 'DeleteJudgmentListTool', 'http_methods': 'DELETE'},
         }
         process_tool_filter(
@@ -507,6 +516,7 @@ class TestProcessToolFilter:
         assert 'GetJudgmentListTool' in registry
         assert 'CreateJudgmentListTool' in registry
         assert 'CreateUBIJudgmentListTool' in registry
+        assert 'CreateLLMJudgmentListTool' in registry
         assert 'DeleteJudgmentListTool' in registry
 
 
