@@ -581,7 +581,7 @@ async def get_query_set_tool(args: GetQuerySetArgs) -> list[dict]:
         formatted_result = json.dumps(result, separators=(',', ':'))
         return [{'type': 'text', 'text': f'Query set {args.query_set_id}:\n{formatted_result}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error retrieving query set: {str(e)}'}]
+        return log_tool_error('GetQuerySetTool', e, 'retrieving query set')
 
 
 async def create_query_set_tool(args: CreateQuerySetArgs) -> list[dict]:
@@ -599,7 +599,7 @@ async def create_query_set_tool(args: CreateQuerySetArgs) -> list[dict]:
         formatted_result = json.dumps(result, separators=(',', ':'))
         return [{'type': 'text', 'text': f'Query set created:\n{formatted_result}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error creating query set: {str(e)}'}]
+        return log_tool_error('CreateQuerySetTool', e, 'creating query set')
 
 
 async def sample_query_set_tool(args: SampleQuerySetArgs) -> list[dict]:
@@ -617,7 +617,7 @@ async def sample_query_set_tool(args: SampleQuerySetArgs) -> list[dict]:
         formatted_result = json.dumps(result, separators=(',', ':'))
         return [{'type': 'text', 'text': f'Query set sampled:\n{formatted_result}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error sampling query set: {str(e)}'}]
+        return log_tool_error('SampleQuerySetTool', e, 'sampling query set')
 
 
 async def delete_query_set_tool(args: DeleteQuerySetArgs) -> list[dict]:
@@ -635,7 +635,7 @@ async def delete_query_set_tool(args: DeleteQuerySetArgs) -> list[dict]:
         formatted_result = json.dumps(result, separators=(',', ':'))
         return [{'type': 'text', 'text': f'Query set {args.query_set_id} deleted:\n{formatted_result}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error deleting query set: {str(e)}'}]
+        return log_tool_error('DeleteQuerySetTool', e, 'deleting query set')
 
 
 from .generic_api_tool import GenericOpenSearchApiArgs, generic_opensearch_api_tool
