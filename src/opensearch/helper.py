@@ -60,14 +60,14 @@ async def search_index(args: SearchIndexArgs) -> json:
 
     async with get_opensearch_client(args) as client:
         query = normalize_scientific_notation(args.query_dsl)
-        
+
         # Limit size to maximum of 100
         tool_info = TOOL_REGISTRY.get('SearchIndexTool', {})
         max_size_limit = tool_info.get('max_size_limit', 100)  # Default to 100 if not configured
 
         effective_size = min(args.size, max_size_limit) if args.size else 10
         query['size'] = effective_size
-        
+
         response = await client.search(index=args.index, body=query)
         return response
 
@@ -414,6 +414,29 @@ async def get_experiment(args: GetExperimentArgs) -> json:
         return response
 
 
+async def _srw_search(args, entity: str) -> json:
+    """Execute a _search request against a Search Relevance Workbench entity index.
+
+    Args:
+        args: Tool args containing the optional query_body
+        entity: The SRW entity name, e.g. 'query_sets', 'search_configurations',
+                'judgments', or 'experiment'
+
+    Returns:
+        json: OpenSearch search response
+    """
+    from .client import get_opensearch_client
+
+    body = args.query_body if args.query_body is not None else {'query': {'match_all': {}}}
+    async with get_opensearch_client(args) as client:
+        response = await client.transport.perform_request(
+            method='POST',
+            url=f'/_plugins/_search_relevance/{entity}/_search',
+            body=json.dumps(body),
+        )
+        return response
+
+
 async def create_experiment(args: CreateExperimentArgs) -> json:
     """Create an experiment via the Search Relevance plugin.
 
@@ -488,50 +511,98 @@ async def delete_experiment(args: DeleteExperimentArgs) -> json:
         return response
 
 
+async def search_query_sets(args: SearchQuerySetsArgs) -> json:
+    """Search query sets using OpenSearch query DSL.
+
+    Args:
+        args: SearchQuerySetsArgs containing an optional query_body
+
+    Returns:
+        json: OpenSearch search response
+    """
+    return await _srw_search(args, 'query_sets')
+
+
+async def search_search_configurations(args: SearchSearchConfigurationsArgs) -> json:
+    """Search search configurations using OpenSearch query DSL.
+
+    Args:
+        args: SearchSearchConfigurationsArgs containing an optional query_body
+
+    Returns:
+        json: OpenSearch search response
+    """
+    return await _srw_search(args, 'search_configurations')
+
+
+async def search_judgments(args: SearchJudgmentsArgs) -> json:
+    """Search judgments using OpenSearch query DSL.
+
+    Args:
+        args: SearchJudgmentsArgs containing an optional query_body
+
+    Returns:
+        json: OpenSearch search response
+    """
+    return await _srw_search(args, 'judgments')
+
+
+async def search_experiments(args: SearchExperimentsArgs) -> json:
+    """Search experiments using OpenSearch query DSL.
+
+    Args:
+        args: SearchExperimentsArgs containing an optional query_body
+
+    Returns:
+        json: OpenSearch search response
+    """
+    return await _srw_search(args, 'experiment')
+
+
 def convert_search_results_to_csv(search_results: dict) -> str:
     """Convert OpenSearch search results to CSV format.
-    
+
     Args:
         search_results: The JSON response from search_index function
-        
+
     Returns:
         str: CSV formatted string of the search results
     """
     if not search_results:
         return "No search results to convert"
-    
+
     has_hits = 'hits' in search_results and search_results['hits']['hits']
     has_aggregations = 'aggregations' in search_results
-    
+
     # Handle aggregations-only queries
     if has_aggregations and not has_hits:
         return json.dumps(search_results['aggregations'], separators=(',', ':'))
-    
+
     # Handle hits-only queries
     if has_hits and not has_aggregations:
         return _convert_hits_to_csv(search_results['hits']['hits'])
-    
+
     # Handle queries with both hits and aggregations
     if has_hits and has_aggregations:
         hits_csv = _convert_hits_to_csv(search_results['hits']['hits'])
         aggregations_json = json.dumps(search_results['aggregations'], separators=(',', ':'))
         return f"SEARCH HITS:\n{hits_csv}\n\nAGGREGATIONS:\n{aggregations_json}"
-    
+
     return "No search results to convert"
 
 
 def _convert_hits_to_csv(hits: list) -> str:
     """Convert search hits to CSV format.
-    
+
     Args:
         hits: List of search hits
-        
+
     Returns:
         str: CSV formatted string
     """
     if not hits:
         return "No documents found in search results"
-    
+
     # Extract all unique field names from all documents (flattened)
     all_fields = set()
     for hit in hits:
@@ -539,15 +610,15 @@ def _convert_hits_to_csv(hits: list) -> str:
             _flatten_fields(hit['_source'], all_fields)
         # Also include metadata fields
         all_fields.update(['_index', '_id', '_score'])
-    
+
     # Convert to sorted list for consistent column order
     fieldnames = sorted(list(all_fields))
-    
+
     # Create CSV in memory
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
-    
+
     # Write each document as a row
     for hit in hits:
         row = {}
@@ -555,19 +626,19 @@ def _convert_hits_to_csv(hits: list) -> str:
         row['_index'] = hit.get('_index', '')
         row['_id'] = hit.get('_id', '')
         row['_score'] = hit.get('_score', '')
-        
+
         # Add source fields (flattened)
         if '_source' in hit:
             _flatten_object(hit['_source'], row)
-        
+
         writer.writerow(row)
-    
+
     return output.getvalue()
 
 
 def _flatten_fields(obj: dict, fields: set, prefix: str = '') -> None:
     """Extract all field names from nested objects.
-    
+
     Args:
         obj: Object to extract field names from
         fields: Set to add field names to
@@ -587,7 +658,7 @@ def _flatten_fields(obj: dict, fields: set, prefix: str = '') -> None:
 
 def _flatten_object(obj: dict, row: dict, prefix: str = '') -> None:
     """Flatten nested objects into separate columns.
-    
+
     Args:
         obj: Object to flatten
         row: Row dictionary to add flattened fields to

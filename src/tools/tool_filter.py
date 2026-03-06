@@ -201,6 +201,10 @@ def process_tool_filter(
             'GetExperimentTool',
             'CreateExperimentTool',
             'DeleteExperimentTool',
+            'SearchQuerySetsTool',
+            'SearchSearchConfigurationsTool',
+            'SearchJudgmentsTool',
+            'SearchExperimentsTool',
         ]
 
         # Build search_relevance tools list using display names

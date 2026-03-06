@@ -570,3 +570,60 @@ class DeleteExperimentArgs(baseToolArgs):
 
     class Config:
         json_schema_extra = {'examples': [{'experiment_id': 'abc123'}]}
+
+
+_SRW_SEARCH_QUERY_BODY_DESCRIPTION = (
+    'OpenSearch query DSL body to filter, sort, and paginate results. '
+    'Defaults to {"query": {"match_all": {}}} if not provided. '
+    'Example: {"query": {"match": {"name": "my-config"}}, "size": 20}'
+)
+
+_SRW_SEARCH_QUERY_BODY_EXAMPLES = [
+    {},
+    {'query_body': {'query': {'match_all': {}}, 'size': 20}},
+    {'query_body': {'query': {'match': {'name': 'my-name'}}}},
+]
+
+
+class SearchQuerySetsArgs(baseToolArgs):
+    """Arguments for the SearchQuerySetsTool."""
+
+    query_body: Optional[Any] = Field(
+        default=None, description=_SRW_SEARCH_QUERY_BODY_DESCRIPTION
+    )
+
+    class Config:
+        json_schema_extra = {'examples': _SRW_SEARCH_QUERY_BODY_EXAMPLES}
+
+
+class SearchSearchConfigurationsArgs(baseToolArgs):
+    """Arguments for the SearchSearchConfigurationsTool."""
+
+    query_body: Optional[Any] = Field(
+        default=None, description=_SRW_SEARCH_QUERY_BODY_DESCRIPTION
+    )
+
+    class Config:
+        json_schema_extra = {'examples': _SRW_SEARCH_QUERY_BODY_EXAMPLES}
+
+
+class SearchJudgmentsArgs(baseToolArgs):
+    """Arguments for the SearchJudgmentsTool."""
+
+    query_body: Optional[Any] = Field(
+        default=None, description=_SRW_SEARCH_QUERY_BODY_DESCRIPTION
+    )
+
+    class Config:
+        json_schema_extra = {'examples': _SRW_SEARCH_QUERY_BODY_EXAMPLES}
+
+
+class SearchExperimentsArgs(baseToolArgs):
+    """Arguments for the SearchExperimentsTool."""
+
+    query_body: Optional[Any] = Field(
+        default=None, description=_SRW_SEARCH_QUERY_BODY_DESCRIPTION
+    )
+
+    class Config:
+        json_schema_extra = {'examples': _SRW_SEARCH_QUERY_BODY_EXAMPLES}

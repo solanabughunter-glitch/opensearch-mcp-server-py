@@ -452,6 +452,10 @@ class TestProcessToolFilter:
             'GetExperimentTool': {'display_name': 'GetExperimentTool', 'http_methods': 'GET'},
             'CreateExperimentTool': {'display_name': 'CreateExperimentTool', 'http_methods': 'PUT'},
             'DeleteExperimentTool': {'display_name': 'DeleteExperimentTool', 'http_methods': 'DELETE'},
+            'SearchQuerySetsTool': {'display_name': 'SearchQuerySetsTool', 'http_methods': 'GET, POST'},
+            'SearchSearchConfigurationsTool': {'display_name': 'SearchSearchConfigurationsTool', 'http_methods': 'GET, POST'},
+            'SearchJudgmentsTool': {'display_name': 'SearchJudgmentsTool', 'http_methods': 'GET, POST'},
+            'SearchExperimentsTool': {'display_name': 'SearchExperimentsTool', 'http_methods': 'GET, POST'},
         }
         process_tool_filter(tool_registry=registry, allow_write=True)
 
@@ -472,6 +476,10 @@ class TestProcessToolFilter:
         assert 'GetExperimentTool' not in registry
         assert 'CreateExperimentTool' not in registry
         assert 'DeleteExperimentTool' not in registry
+        assert 'SearchQuerySetsTool' not in registry
+        assert 'SearchSearchConfigurationsTool' not in registry
+        assert 'SearchJudgmentsTool' not in registry
+        assert 'SearchExperimentsTool' not in registry
 
     def test_search_relevance_category_can_be_enabled(self):
         """search_relevance tools are exposed when the category is explicitly enabled."""
@@ -507,6 +515,10 @@ class TestProcessToolFilter:
             'GetExperimentTool': {'display_name': 'GetExperimentTool', 'http_methods': 'GET'},
             'CreateExperimentTool': {'display_name': 'CreateExperimentTool', 'http_methods': 'PUT'},
             'DeleteExperimentTool': {'display_name': 'DeleteExperimentTool', 'http_methods': 'DELETE'},
+            'SearchQuerySetsTool': {'display_name': 'SearchQuerySetsTool', 'http_methods': 'GET, POST'},
+            'SearchSearchConfigurationsTool': {'display_name': 'SearchSearchConfigurationsTool', 'http_methods': 'GET, POST'},
+            'SearchJudgmentsTool': {'display_name': 'SearchJudgmentsTool', 'http_methods': 'GET, POST'},
+            'SearchExperimentsTool': {'display_name': 'SearchExperimentsTool', 'http_methods': 'GET, POST'},
         }
         process_tool_filter(
             tool_registry=registry,
@@ -530,6 +542,10 @@ class TestProcessToolFilter:
         assert 'GetExperimentTool' in registry
         assert 'CreateExperimentTool' in registry
         assert 'DeleteExperimentTool' in registry
+        assert 'SearchQuerySetsTool' in registry
+        assert 'SearchSearchConfigurationsTool' in registry
+        assert 'SearchJudgmentsTool' in registry
+        assert 'SearchExperimentsTool' in registry
 
 
 class TestAllowWriteSettings:

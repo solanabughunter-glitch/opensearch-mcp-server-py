@@ -79,6 +79,10 @@ Search Relevance Workbench tools are grouped under the `search_relevance` catego
 - [CreateExperimentTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/experiments/): Creates a search relevance experiment. Supports PAIRWISE_COMPARISON (compares 2 search configurations), POINTWISE_EVALUATION (evaluates 1 configuration against judgment lists), and HYBRID_OPTIMIZER (optimizes 1 configuration using judgment lists).
 - [GetExperimentTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/experiments/): Retrieves an experiment by ID.
 - [DeleteExperimentTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/experiments/): Deletes an experiment by ID.
+- [SearchQuerySetsTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/query-sets/): Searches query sets using OpenSearch query DSL. Defaults to match_all if no query body is provided.
+- [SearchSearchConfigurationsTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/search-configurations/): Searches search configurations using OpenSearch query DSL. Defaults to match_all if no query body is provided.
+- [SearchJudgmentsTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/judgments/): Searches judgments using OpenSearch query DSL. Defaults to match_all if no query body is provided.
+- [SearchExperimentsTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/experiments/): Searches experiments using OpenSearch query DSL. Defaults to match_all if no query body is provided.
 
 ### Skills Tools (Enabled by Default)
 

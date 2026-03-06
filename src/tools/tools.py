@@ -32,6 +32,10 @@ from .tool_params import (
     GetExperimentArgs,
     CreateExperimentArgs,
     DeleteExperimentArgs,
+    SearchQuerySetsArgs,
+    SearchSearchConfigurationsArgs,
+    SearchJudgmentsArgs,
+    SearchExperimentsArgs,
     baseToolArgs,
 )
 from .tool_logging import log_tool_error
@@ -69,6 +73,10 @@ from opensearch.helper import (
     get_experiment,
     create_experiment,
     delete_experiment,
+    search_query_sets,
+    search_search_configurations,
+    search_judgments,
+    search_experiments,
 )
 from .skills_tools import SKILLS_TOOLS_REGISTRY
 
@@ -803,6 +811,78 @@ async def delete_experiment_tool(args: DeleteExperimentArgs) -> list[dict]:
         return log_tool_error('DeleteExperimentTool', e, 'deleting experiment')
 
 
+async def search_query_sets_tool(args: SearchQuerySetsArgs) -> list[dict]:
+    """Tool to search query sets using OpenSearch query DSL.
+
+    Args:
+        args: SearchQuerySetsArgs containing an optional query_body
+
+    Returns:
+        list[dict]: Search results in MCP format
+    """
+    try:
+        await check_tool_compatibility('SearchQuerySetsTool', args)
+        result = await search_query_sets(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Query set search results:\n{formatted_result}'}]
+    except Exception as e:
+        return log_tool_error('SearchQuerySetsTool', e, 'searching query sets')
+
+
+async def search_search_configurations_tool(args: SearchSearchConfigurationsArgs) -> list[dict]:
+    """Tool to search search configurations using OpenSearch query DSL.
+
+    Args:
+        args: SearchSearchConfigurationsArgs containing an optional query_body
+
+    Returns:
+        list[dict]: Search results in MCP format
+    """
+    try:
+        await check_tool_compatibility('SearchSearchConfigurationsTool', args)
+        result = await search_search_configurations(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Search configuration search results:\n{formatted_result}'}]
+    except Exception as e:
+        return log_tool_error('SearchSearchConfigurationsTool', e, 'searching search configurations')
+
+
+async def search_judgments_tool(args: SearchJudgmentsArgs) -> list[dict]:
+    """Tool to search judgments using OpenSearch query DSL.
+
+    Args:
+        args: SearchJudgmentsArgs containing an optional query_body
+
+    Returns:
+        list[dict]: Search results in MCP format
+    """
+    try:
+        await check_tool_compatibility('SearchJudgmentsTool', args)
+        result = await search_judgments(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Judgment search results:\n{formatted_result}'}]
+    except Exception as e:
+        return log_tool_error('SearchJudgmentsTool', e, 'searching judgments')
+
+
+async def search_experiments_tool(args: SearchExperimentsArgs) -> list[dict]:
+    """Tool to search experiments using OpenSearch query DSL.
+
+    Args:
+        args: SearchExperimentsArgs containing an optional query_body
+
+    Returns:
+        list[dict]: Search results in MCP format
+    """
+    try:
+        await check_tool_compatibility('SearchExperimentsTool', args)
+        result = await search_experiments(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Experiment search results:\n{formatted_result}'}]
+    except Exception as e:
+        return log_tool_error('SearchExperimentsTool', e, 'searching experiments')
+
+
 from .generic_api_tool import GenericOpenSearchApiArgs, generic_opensearch_api_tool
 
 
@@ -1000,6 +1080,62 @@ TOOL_REGISTRY = {
         'args_model': DeleteExperimentArgs,
         'min_version': '3.1.0',
         'http_methods': 'DELETE',
+    },
+    'SearchQuerySetsTool': {
+        'display_name': 'SearchQuerySetsTool',
+        'description': (
+            'Searches query sets in the OpenSearch Search Relevance plugin using OpenSearch query DSL '
+            'via POST /_plugins/_search_relevance/query_sets/_search. '
+            'Accepts a full query DSL body to filter, sort, and paginate results. '
+            'Returns all query sets when called without a query body.'
+        ),
+        'input_schema': SearchQuerySetsArgs.model_json_schema(),
+        'function': search_query_sets_tool,
+        'args_model': SearchQuerySetsArgs,
+        'min_version': '3.5.0',
+        'http_methods': 'GET, POST',
+    },
+    'SearchSearchConfigurationsTool': {
+        'display_name': 'SearchSearchConfigurationsTool',
+        'description': (
+            'Searches search configurations in the OpenSearch Search Relevance plugin using OpenSearch query DSL '
+            'via POST /_plugins/_search_relevance/search_configuration/_search. '
+            'Accepts a full query DSL body to filter, sort, and paginate results. '
+            'Returns all search configurations when called without a query body.'
+        ),
+        'input_schema': SearchSearchConfigurationsArgs.model_json_schema(),
+        'function': search_search_configurations_tool,
+        'args_model': SearchSearchConfigurationsArgs,
+        'min_version': '3.5.0',
+        'http_methods': 'GET, POST',
+    },
+    'SearchJudgmentsTool': {
+        'display_name': 'SearchJudgmentsTool',
+        'description': (
+            'Searches judgments in the OpenSearch Search Relevance plugin using OpenSearch query DSL '
+            'via POST /_plugins/_search_relevance/judgment/_search. '
+            'Accepts a full query DSL body to filter, sort, and paginate results. '
+            'Returns all judgments when called without a query body.'
+        ),
+        'input_schema': SearchJudgmentsArgs.model_json_schema(),
+        'function': search_judgments_tool,
+        'args_model': SearchJudgmentsArgs,
+        'min_version': '3.5.0',
+        'http_methods': 'GET, POST',
+    },
+    'SearchExperimentsTool': {
+        'display_name': 'SearchExperimentsTool',
+        'description': (
+            'Searches experiments in the OpenSearch Search Relevance plugin using OpenSearch query DSL '
+            'via POST /_plugins/_search_relevance/experiment/_search. '
+            'Accepts a full query DSL body to filter, sort, and paginate results. '
+            'Returns all experiments when called without a query body.'
+        ),
+        'input_schema': SearchExperimentsArgs.model_json_schema(),
+        'function': search_experiments_tool,
+        'args_model': SearchExperimentsArgs,
+        'min_version': '3.5.0',
+        'http_methods': 'GET, POST',
     },
     'GenericOpenSearchApiTool': {
         'display_name': 'GenericOpenSearchApiTool',
