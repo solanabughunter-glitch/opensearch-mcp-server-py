@@ -396,6 +396,98 @@ async def delete_query_set(args: DeleteQuerySetArgs) -> json:
         return response
 
 
+async def get_experiment(args: GetExperimentArgs) -> json:
+    """Retrieve an experiment by ID via the Search Relevance plugin.
+
+    Args:
+        args: GetExperimentArgs containing the experiment_id
+
+    Returns:
+        json: OpenSearch response with the experiment details
+    """
+    from .client import get_opensearch_client
+
+    async with get_opensearch_client(args) as client:
+        response = await client.plugins.search_relevance.get_experiments(
+            experiment_id=args.experiment_id
+        )
+        return response
+
+
+async def create_experiment(args: CreateExperimentArgs) -> json:
+    """Create an experiment via the Search Relevance plugin.
+
+    Validates configuration counts for each experiment type and requires
+    judgment lists for POINTWISE_EVALUATION and HYBRID_OPTIMIZER.
+
+    Args:
+        args: CreateExperimentArgs containing query_set_id, search_configuration_ids,
+              experiment_type, size, and optional judgment_list_ids
+
+    Returns:
+        json: OpenSearch response with the created experiment ID
+    """
+    from .client import get_opensearch_client
+
+    search_configuration_ids = (
+        json.loads(args.search_configuration_ids)
+        if isinstance(args.search_configuration_ids, str)
+        else args.search_configuration_ids
+    )
+    if not isinstance(search_configuration_ids, list):
+        raise ValueError('search_configuration_ids must be a JSON array of configuration ID strings')
+
+    if args.experiment_type == 'PAIRWISE_COMPARISON' and len(search_configuration_ids) != 2:
+        raise ValueError('PAIRWISE_COMPARISON requires exactly 2 search configuration IDs')
+    if args.experiment_type in ('POINTWISE_EVALUATION', 'HYBRID_OPTIMIZER') and len(search_configuration_ids) != 1:
+        raise ValueError(f'{args.experiment_type} requires exactly 1 search configuration ID')
+
+    body: dict = {
+        'querySetId': args.query_set_id,
+        'searchConfigurationList': search_configuration_ids,
+        'size': args.size,
+        'type': args.experiment_type,
+    }
+
+    if args.experiment_type in ('POINTWISE_EVALUATION', 'HYBRID_OPTIMIZER'):
+        if not args.judgment_list_ids:
+            raise ValueError(
+                f'{args.experiment_type} requires judgment_list_ids. '
+                'Provide one or more judgment list IDs as a JSON array, '
+                'e.g. ["judgment-id-1"] or ["judgment-id-1", "judgment-id-2"]'
+            )
+        judgment_list_ids = (
+            json.loads(args.judgment_list_ids)
+            if isinstance(args.judgment_list_ids, str)
+            else args.judgment_list_ids
+        )
+        if not isinstance(judgment_list_ids, list) or len(judgment_list_ids) == 0:
+            raise ValueError('judgment_list_ids must be a non-empty JSON array of judgment list ID strings')
+        body['judgmentList'] = judgment_list_ids
+
+    async with get_opensearch_client(args) as client:
+        response = await client.plugins.search_relevance.put_experiments(body=body)
+        return response
+
+
+async def delete_experiment(args: DeleteExperimentArgs) -> json:
+    """Delete an experiment by ID via the Search Relevance plugin.
+
+    Args:
+        args: DeleteExperimentArgs containing the experiment_id
+
+    Returns:
+        json: OpenSearch response confirming deletion
+    """
+    from .client import get_opensearch_client
+
+    async with get_opensearch_client(args) as client:
+        response = await client.plugins.search_relevance.delete_experiments(
+            experiment_id=args.experiment_id
+        )
+        return response
+
+
 def convert_search_results_to_csv(search_results: dict) -> str:
     """Convert OpenSearch search results to CSV format.
     

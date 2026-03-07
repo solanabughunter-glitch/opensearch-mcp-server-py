@@ -449,6 +449,9 @@ class TestProcessToolFilter:
                 'http_methods': 'PUT',
             },
             'DeleteJudgmentListTool': {'display_name': 'DeleteJudgmentListTool', 'http_methods': 'DELETE'},
+            'GetExperimentTool': {'display_name': 'GetExperimentTool', 'http_methods': 'GET'},
+            'CreateExperimentTool': {'display_name': 'CreateExperimentTool', 'http_methods': 'PUT'},
+            'DeleteExperimentTool': {'display_name': 'DeleteExperimentTool', 'http_methods': 'DELETE'},
         }
         process_tool_filter(tool_registry=registry, allow_write=True)
 
@@ -466,6 +469,9 @@ class TestProcessToolFilter:
         assert 'CreateUBIJudgmentListTool' not in registry
         assert 'CreateLLMJudgmentListTool' not in registry
         assert 'DeleteJudgmentListTool' not in registry
+        assert 'GetExperimentTool' not in registry
+        assert 'CreateExperimentTool' not in registry
+        assert 'DeleteExperimentTool' not in registry
 
     def test_search_relevance_category_can_be_enabled(self):
         """search_relevance tools are exposed when the category is explicitly enabled."""
@@ -498,6 +504,9 @@ class TestProcessToolFilter:
                 'http_methods': 'PUT',
             },
             'DeleteJudgmentListTool': {'display_name': 'DeleteJudgmentListTool', 'http_methods': 'DELETE'},
+            'GetExperimentTool': {'display_name': 'GetExperimentTool', 'http_methods': 'GET'},
+            'CreateExperimentTool': {'display_name': 'CreateExperimentTool', 'http_methods': 'PUT'},
+            'DeleteExperimentTool': {'display_name': 'DeleteExperimentTool', 'http_methods': 'DELETE'},
         }
         process_tool_filter(
             tool_registry=registry,
@@ -518,6 +527,9 @@ class TestProcessToolFilter:
         assert 'CreateUBIJudgmentListTool' in registry
         assert 'CreateLLMJudgmentListTool' in registry
         assert 'DeleteJudgmentListTool' in registry
+        assert 'GetExperimentTool' in registry
+        assert 'CreateExperimentTool' in registry
+        assert 'DeleteExperimentTool' in registry
 
 
 class TestAllowWriteSettings:

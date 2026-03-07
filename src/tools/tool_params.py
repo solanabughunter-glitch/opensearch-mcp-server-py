@@ -504,3 +504,69 @@ class DeleteJudgmentListArgs(baseToolArgs):
 
     class Config:
         json_schema_extra = {'examples': [{'judgment_id': 'abc123'}]}
+
+
+class GetExperimentArgs(baseToolArgs):
+    """Arguments for the GetExperimentTool."""
+
+    experiment_id: str = Field(description='ID of the experiment to retrieve')
+
+    class Config:
+        json_schema_extra = {'examples': [{'experiment_id': 'abc123'}]}
+
+
+class CreateExperimentArgs(baseToolArgs):
+    """Arguments for the CreateExperimentTool."""
+
+    query_set_id: str = Field(description='ID of the query set to use for the experiment')
+    search_configuration_ids: str = Field(
+        description='JSON array of search configuration IDs. '
+        'PAIRWISE_COMPARISON requires exactly 2, '
+        'POINTWISE_EVALUATION and HYBRID_OPTIMIZER require exactly 1. '
+        'Example: ["config-id-1", "config-id-2"]'
+    )
+    experiment_type: Literal['PAIRWISE_COMPARISON', 'POINTWISE_EVALUATION', 'HYBRID_OPTIMIZER'] = Field(
+        description=(
+            'Type of experiment: '
+            '"PAIRWISE_COMPARISON" (compares 2 search configurations, no judgment lists required), '
+            '"POINTWISE_EVALUATION" (evaluates 1 configuration against judgment lists), '
+            '"HYBRID_OPTIMIZER" (optimizes 1 configuration using judgment lists)'
+        )
+    )
+    size: int = Field(
+        default=10,
+        description='Number of results to retrieve per query (default: 10)',
+        ge=1,
+    )
+    judgment_list_ids: Optional[str] = Field(
+        default=None,
+        description='JSON array of judgment list IDs. Required for POINTWISE_EVALUATION and HYBRID_OPTIMIZER. '
+        'Example: ["judgment-id-1"] or ["judgment-id-1", "judgment-id-2"]',
+    )
+
+    class Config:
+        json_schema_extra = {
+            'examples': [
+                {
+                    'query_set_id': 'qs-123',
+                    'search_configuration_ids': '["config-1", "config-2"]',
+                    'experiment_type': 'PAIRWISE_COMPARISON',
+                    'size': 10,
+                },
+                {
+                    'query_set_id': 'qs-123',
+                    'search_configuration_ids': '["config-1"]',
+                    'experiment_type': 'POINTWISE_EVALUATION',
+                    'judgment_list_ids': '["judgment-1"]',
+                },
+            ]
+        }
+
+
+class DeleteExperimentArgs(baseToolArgs):
+    """Arguments for the DeleteExperimentTool."""
+
+    experiment_id: str = Field(description='ID of the experiment to delete')
+
+    class Config:
+        json_schema_extra = {'examples': [{'experiment_id': 'abc123'}]}

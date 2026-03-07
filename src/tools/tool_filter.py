@@ -198,6 +198,9 @@ def process_tool_filter(
             'CreateUBIJudgmentListTool',
             'CreateLLMJudgmentListTool',
             'DeleteJudgmentListTool',
+            'GetExperimentTool',
+            'CreateExperimentTool',
+            'DeleteExperimentTool',
         ]
 
         # Build search_relevance tools list using display names

@@ -29,6 +29,9 @@ from .tool_params import (
     CreateQuerySetArgs,
     SampleQuerySetArgs,
     DeleteQuerySetArgs,
+    GetExperimentArgs,
+    CreateExperimentArgs,
+    DeleteExperimentArgs,
     baseToolArgs,
 )
 from .tool_logging import log_tool_error
@@ -63,6 +66,9 @@ from opensearch.helper import (
     create_query_set,
     sample_query_set,
     delete_query_set,
+    get_experiment,
+    create_experiment,
+    delete_experiment,
 )
 from .skills_tools import SKILLS_TOOLS_REGISTRY
 
@@ -742,6 +748,61 @@ async def create_llm_judgment_list_tool(args: CreateLLMJudgmentListArgs) -> list
         return log_tool_error('CreateLLMJudgmentListTool', e, 'creating LLM judgment list')
 
 
+async def get_experiment_tool(args: GetExperimentArgs) -> list[dict]:
+    """Tool to retrieve a specific experiment by ID from the Search Relevance plugin.
+
+    Args:
+        args: GetExperimentArgs containing the experiment_id
+
+    Returns:
+        list[dict]: Experiment details in MCP format
+    """
+    try:
+        await check_tool_compatibility('GetExperimentTool', args)
+        result = await get_experiment(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Experiment {args.experiment_id}:\n{formatted_result}'}]
+    except Exception as e:
+        return log_tool_error('GetExperimentTool', e, 'retrieving experiment')
+
+
+async def create_experiment_tool(args: CreateExperimentArgs) -> list[dict]:
+    """Tool to create a search relevance experiment via the Search Relevance plugin.
+
+    Args:
+        args: CreateExperimentArgs containing query_set_id, search_configuration_ids,
+              experiment_type, size, and optional judgment_list_ids
+
+    Returns:
+        list[dict]: Result of the creation operation in MCP format
+    """
+    try:
+        await check_tool_compatibility('CreateExperimentTool', args)
+        result = await create_experiment(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Experiment created:\n{formatted_result}'}]
+    except Exception as e:
+        return log_tool_error('CreateExperimentTool', e, 'creating experiment')
+
+
+async def delete_experiment_tool(args: DeleteExperimentArgs) -> list[dict]:
+    """Tool to delete an experiment by ID from the Search Relevance plugin.
+
+    Args:
+        args: DeleteExperimentArgs containing the experiment_id
+
+    Returns:
+        list[dict]: Result of the deletion operation in MCP format
+    """
+    try:
+        await check_tool_compatibility('DeleteExperimentTool', args)
+        result = await delete_experiment(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Experiment {args.experiment_id} deleted:\n{formatted_result}'}]
+    except Exception as e:
+        return log_tool_error('DeleteExperimentTool', e, 'deleting experiment')
+
+
 from .generic_api_tool import GenericOpenSearchApiArgs, generic_opensearch_api_tool
 
 
@@ -904,6 +965,39 @@ TOOL_REGISTRY = {
         'input_schema': DeleteQuerySetArgs.model_json_schema(),
         'function': delete_query_set_tool,
         'args_model': DeleteQuerySetArgs,
+        'min_version': '3.1.0',
+        'http_methods': 'DELETE',
+    },
+    'GetExperimentTool': {
+        'display_name': 'GetExperimentTool',
+        'description': 'Retrieves a search relevance experiment by ID from the OpenSearch Search Relevance plugin.',
+        'input_schema': GetExperimentArgs.model_json_schema(),
+        'function': get_experiment_tool,
+        'args_model': GetExperimentArgs,
+        'min_version': '3.1.0',
+        'http_methods': 'GET',
+    },
+    'CreateExperimentTool': {
+        'display_name': 'CreateExperimentTool',
+        'description': (
+            'Creates a search relevance experiment using the OpenSearch Search Relevance plugin. '
+            'Supports three experiment types: '
+            'PAIRWISE_COMPARISON (compares 2 search configurations head-to-head), '
+            'POINTWISE_EVALUATION (evaluates 1 configuration against judgment lists), '
+            'HYBRID_OPTIMIZER (optimizes 1 configuration using judgment lists).'
+        ),
+        'input_schema': CreateExperimentArgs.model_json_schema(),
+        'function': create_experiment_tool,
+        'args_model': CreateExperimentArgs,
+        'min_version': '3.1.0',
+        'http_methods': 'PUT',
+    },
+    'DeleteExperimentTool': {
+        'display_name': 'DeleteExperimentTool',
+        'description': 'Deletes a search relevance experiment by ID from the OpenSearch Search Relevance plugin.',
+        'input_schema': DeleteExperimentArgs.model_json_schema(),
+        'function': delete_experiment_tool,
+        'args_model': DeleteExperimentArgs,
         'min_version': '3.1.0',
         'http_methods': 'DELETE',
     },

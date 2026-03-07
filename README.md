@@ -76,6 +76,9 @@ Search Relevance Workbench tools are grouped under the `search_relevance` catego
 - [CreateUBIJudgmentListTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/judgments/#implicit-judgments): Creates a judgment list based on implicit feedback (User Behavior Insights data).
 - [GetJudgmentListTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/judgments/): Retrieves a judgment list by ID.
 - [DeleteJudgmentListTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/judgments/): Deletes a judgment list by ID.
+- [CreateExperimentTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/experiments/): Creates a search relevance experiment. Supports PAIRWISE_COMPARISON (compares 2 search configurations), POINTWISE_EVALUATION (evaluates 1 configuration against judgment lists), and HYBRID_OPTIMIZER (optimizes 1 configuration using judgment lists).
+- [GetExperimentTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/experiments/): Retrieves an experiment by ID.
+- [DeleteExperimentTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/experiments/): Deletes an experiment by ID.
 
 ### Skills Tools (Enabled by Default)
 
