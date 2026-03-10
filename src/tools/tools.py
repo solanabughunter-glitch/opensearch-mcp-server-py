@@ -828,7 +828,7 @@ TOOL_REGISTRY = {
     },
     'SearchIndexTool': {
         'display_name': 'SearchIndexTool',
-        'description': 'Searches an index using a query written in query domain-specific language (DSL) in OpenSearch',
+        'description': 'Searches an index using a query written in query domain-specific language (DSL) in OpenSearch. PREREQUISITE: You need to know the mappings of the index before constructing queries.',
         'input_schema': SearchIndexArgs.model_json_schema(),
         'function': search_index_tool,
         'args_model': SearchIndexArgs,
