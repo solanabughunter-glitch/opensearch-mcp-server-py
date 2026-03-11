@@ -6,7 +6,6 @@ metadata:
   labels:
     app.kubernetes.io/name: log-correlation
 spec:
-  # Change to LoadBalancer for direct external access
   type: ClusterIP
   selector:
     app.kubernetes.io/name: log-correlation

@@ -6,7 +6,7 @@ metadata:
   labels:
     app.kubernetes.io/name: log-correlation
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: log-correlation
@@ -15,12 +15,9 @@ spec:
       labels:
         app.kubernetes.io/name: log-correlation
     spec:
-      imagePullSecrets:
-        - name: ecr-pull-secret
       containers:
         - name: log-correlation
-          # Replace with your ECR image URI:
-          image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/log-correlation-server:latest
+          image: docker.io/shubh457/log-correlation:v1
           ports:
             - containerPort: 8765
               protocol: TCP

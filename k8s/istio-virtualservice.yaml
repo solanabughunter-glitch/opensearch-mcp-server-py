@@ -1,0 +1,18 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: log-correlation-vs
+  namespace: log-correlation
+  labels:
+    app: log-correlation
+spec:
+  gateways:
+    - log-correlation-gateway
+  hosts:
+    - log-correlation.interface-internal.ai
+  http:
+    - route:
+        - destination:
+            host: log-correlation
+            port:
+              number: 80
