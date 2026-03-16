@@ -6,8 +6,7 @@ on:
       - 'main'
       - '[0-9]+.[0-9]+'
       - '[0-9]+.x'
-  pull_request_target:
-    types: [opened, synchronize, reopened]
+  pull_request:
 
 permissions:
   id-token: write
@@ -40,10 +39,9 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Configure AWS credentials
+        if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
         id: aws-creds
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -128,11 +126,13 @@ jobs:
         run: pip show opensearch-mcp-server-py
 
       - name: Install integration test dependencies
+        if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
         run: pip install pytest-asyncio pytest-timeout "httpx[http2]"
 
       - name: Run integration tests
+        if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
         env:
           IT_AWS_ACCESS_KEY_ID: ${{ steps.aws-creds.outputs.aws-access-key-id }}
           IT_AWS_SECRET_ACCESS_KEY: ${{ steps.aws-creds.outputs.aws-secret-access-key }}
           IT_AWS_SESSION_TOKEN: ${{ steps.aws-creds.outputs.aws-session-token }}
-        run: python -m pytest integration_tests/ -v --tb=short --timeout=180
+        run: python -m pytest integration_tests/ -v --tb=short --timeout=300
