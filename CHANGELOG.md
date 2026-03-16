@@ -18,6 +18,9 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add Search Relevance Workbench tools for experiment management (create, get, delete) ([#192](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/192))
 - Add Search Relevance Workbench `_search` API tools for querying query sets, search configurations, judgments, and experiments using OpenSearch query DSL ([#193](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/193))
 
+- Add integration test framework with 93 tests covering 6 auth modes, 19 tools, concurrency, error handling, server modes, tool filtering, and write protection ([#179](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/179))
+- Refactor CI to matrix strategy with GitHub OIDC for AWS authentication and integration tests on all 3 platforms ([#179](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/179))
+
 ### Improved
 
 - Enhanced SearchIndexTool descriptions to improve LLM query construction consistency ([#194](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/194))
@@ -30,8 +33,6 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Optimize JSON output token usage by removing formatting whitespace across all tools ([#167](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/167))
 - Rename SearchIndexTool parameter `query` to `query_dsl` to avoid confusion with nested query objects ([#172](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/172))
 - Add structured JSON logging (`--log-format json`) for monitoring and metrics ([#178](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/178))
-- Add integration test framework with 93 tests covering 6 auth modes, 19 tools, concurrency, error handling, server modes, tool filtering, and write protection ([#179](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/179))
-- Refactor CI to matrix strategy with GitHub OIDC for AWS authentication and integration tests on all 3 platforms ([#179](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/179))
 
 ### Fixed
 

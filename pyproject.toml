@@ -34,11 +34,6 @@ integration = [
     "httpx[http2]>=0.27",
 ]
 
-[tool.pytest.ini_options]
-markers = [
-    "eval: marks tests as LLM eval tests that call the Anthropic API (run with --run-evals)",
-]
-
 [build-system]
 requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
@@ -100,6 +95,7 @@ Changelog = "https://github.com/opensearch-project/opensearch-mcp-server-py/blob
 
 [tool.pytest.ini_options]
 markers = [
+    "eval: marks tests as LLM eval tests that call the Anthropic API (run with --run-evals)",
     "auth: Authentication mode tests",
     "tools: Tool coverage tests",
     "errors: Bad-path / negative tests",
