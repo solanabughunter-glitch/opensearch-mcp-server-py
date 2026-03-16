@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log Correlation</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242836;
+    --border: #2e3347; --text: #e1e4ed; --text2: #8b8fa7;
+    --accent: #6c7ee1; --accent-hover: #8b9bf0;
+    --error: #f06c6c; --warn: #e6b44c; --info: #5eb5e0; --success: #5ec08a;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.5; }
+
+  .header { padding: 20px 32px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 12px; }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header span { color: var(--text2); font-size: 14px; }
+
+  .input-panel { padding: 20px 32px; background: var(--surface);
+                 border-bottom: 1px solid var(--border); }
+  .input-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 12px; margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; color: var(--text2);
+                 margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .field input, .field select {
+    width: 100%; padding: 8px 12px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text); font-size: 14px; outline: none; }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+
+  .actions { display: flex; gap: 12px; align-items: center; }
+  .btn { padding: 10px 24px; border-radius: var(--radius); border: none;
+         background: var(--accent); color: #fff; font-size: 14px; font-weight: 600;
+         cursor: pointer; transition: background 0.2s; }
+  .btn:hover { background: var(--accent-hover); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status { font-size: 13px; color: var(--text2); }
+
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border);
+          padding: 0 32px; background: var(--surface); }
+  .tab { padding: 12px 20px; font-size: 14px; font-weight: 500;
+         cursor: pointer; color: var(--text2); border-bottom: 2px solid transparent;
+         transition: all 0.2s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-content { display: none; padding: 20px 32px; }
+  .tab-content.active { display: block; }
+
+  /* Summary */
+  .summary-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--surface); border: 1px solid var(--border);
+          border-radius: var(--radius); padding: 16px; text-align: center; }
+  .card .value { font-size: 28px; font-weight: 700; }
+  .card .label { font-size: 12px; color: var(--text2); text-transform: uppercase; margin-top: 4px; }
+  .card.error .value { color: var(--error); }
+  .card.warn .value { color: var(--warn); }
+  .card.info .value { color: var(--info); }
+  .card.success .value { color: var(--success); }
+
+  .sub-section { margin-bottom: 24px; }
+  .sub-section h3 { font-size: 14px; color: var(--text2); text-transform: uppercase;
+                    letter-spacing: 0.5px; margin-bottom: 12px; }
+
+  .index-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .index-bar .name { font-size: 13px; min-width: 200px; }
+  .index-bar .bar { flex: 1; height: 20px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .index-bar .bar-fill { height: 100%; background: var(--accent); border-radius: 4px;
+                          display: flex; align-items: center; justify-content: flex-end;
+                          padding-right: 6px; font-size: 11px; font-weight: 600; min-width: 30px; }
+
+  /* Raw Logs */
+  .log-table-wrap { overflow-x: auto; }
+  table.logs { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.logs th { text-align: left; padding: 8px 12px; background: var(--surface);
+                  border-bottom: 1px solid var(--border); color: var(--text2);
+                  font-weight: 600; text-transform: uppercase; font-size: 11px;
+                  position: sticky; top: 0; z-index: 1; }
+  table.logs td { padding: 6px 12px; border-bottom: 1px solid var(--border);
+                  vertical-align: top; max-width: 500px; word-break: break-word; }
+  table.logs tr.level-ERROR td { border-left: 3px solid var(--error); }
+  table.logs tr.level-WARN td:first-child { border-left: 3px solid var(--warn); }
+  .level-badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .level-badge.ERROR { background: rgba(240,108,108,0.15); color: var(--error); }
+  .level-badge.WARN { background: rgba(230,180,76,0.15); color: var(--warn); }
+  .level-badge.INFO { background: rgba(94,181,224,0.1); color: var(--info); }
+  .level-badge.DEBUG, .level-badge.TRACE { background: rgba(139,143,167,0.1); color: var(--text2); }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 32px; }
+  .timeline::before { content: ''; position: absolute; left: 11px; top: 0; bottom: 0;
+                       width: 2px; background: var(--border); }
+  .tl-item { position: relative; margin-bottom: 12px; }
+  .tl-dot { position: absolute; left: -27px; top: 6px; width: 12px; height: 12px;
+            border-radius: 50%; border: 2px solid var(--border); background: var(--surface); }
+  .tl-dot.ERROR { border-color: var(--error); background: var(--error); }
+  .tl-dot.WARN { border-color: var(--warn); }
+  .tl-dot.integration { border-color: var(--success); }
+  .tl-card { background: var(--surface); border: 1px solid var(--border);
+             border-radius: var(--radius); padding: 10px 14px; }
+  .tl-meta { display: flex; gap: 10px; font-size: 12px; color: var(--text2); margin-bottom: 4px; flex-wrap: wrap; }
+  .tl-meta .src { background: var(--surface2); padding: 1px 6px; border-radius: 4px; }
+  .tl-detail { font-size: 13px; }
+  .tl-endpoint { font-family: monospace; font-size: 12px; color: var(--info); margin-top: 4px; }
+
+  /* Error list */
+  .error-item { background: rgba(240,108,108,0.06); border: 1px solid rgba(240,108,108,0.2);
+                border-radius: var(--radius); padding: 12px; margin-bottom: 8px; }
+  .error-item .err-msg { color: var(--error); font-weight: 500; }
+  .error-item .err-meta { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text2); }
+  .empty-state p { font-size: 15px; }
+
+  .log-count { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+
+  /* Trace tree */
+  .trace-tree details { margin-left: 20px; }
+  .trace-tree > details { margin-left: 0; }
+  .trace-tree summary {
+    cursor: pointer; padding: 6px 10px; border-radius: var(--radius);
+    font-size: 14px; list-style: none; user-select: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .trace-tree summary:hover { background: var(--surface2); }
+  .trace-tree summary::before {
+    content: '\25B6'; font-size: 10px; color: var(--text2);
+    transition: transform 0.15s; display: inline-block; width: 14px; flex-shrink: 0;
+  }
+  .trace-tree details[open] > summary::before { transform: rotate(90deg); }
+  .trace-tree .node-session summary { font-size: 15px; font-weight: 600; color: var(--accent); }
+  .trace-tree .node-connection summary { font-weight: 500; color: var(--info); }
+  .trace-tree .node-experience summary { font-weight: 500; color: var(--success); }
+  .trace-tree .leaf {
+    margin-left: 20px; padding: 4px 10px 4px 22px;
+    font-size: 13px; display: flex; gap: 8px; align-items: baseline;
+    border-left: 2px solid var(--border);
+  }
+  .trace-tree .leaf .ts { color: var(--text2); font-size: 12px; white-space: nowrap; min-width: 80px; }
+  .trace-tree .leaf .badge {
+    padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700;
+    flex-shrink: 0; text-transform: uppercase;
+  }
+  .trace-tree .leaf .badge.INPUT { background: rgba(94,181,224,0.15); color: var(--info); }
+  .trace-tree .leaf .badge.OUTPUT { background: rgba(139,143,167,0.15); color: var(--text2); }
+  .trace-tree .leaf .badge.ERROR { background: rgba(240,108,108,0.15); color: var(--error); }
+  .trace-tree .leaf .badge.INTEGRATION { background: rgba(94,192,138,0.15); color: var(--success); }
+  .trace-tree .leaf .badge.SYSTEM { background: rgba(139,143,167,0.1); color: var(--text2); }
+  .trace-tree .leaf .badge.EVENT { background: rgba(108,126,225,0.15); color: var(--accent); }
+  .trace-tree .leaf .badge.NLP { background: rgba(200,130,240,0.15); color: #c882f0; }
+  .trace-tree .leaf .badge.STREAM { background: rgba(240,180,76,0.15); color: var(--warn); }
+  .trace-tree .leaf .leaf-text { word-break: break-word; }
+  .trace-tree .node-meta { font-size: 12px; color: var(--text2); font-weight: 400; margin-left: 4px; }
+  .trace-tree .node-count {
+    font-size: 11px; background: var(--surface2); padding: 1px 6px;
+    border-radius: 10px; color: var(--text2); font-weight: 600;
+  }
+  .trace-stats { display: flex; gap: 16px; margin-bottom: 16px; font-size: 13px; color: var(--text2); flex-wrap: wrap; align-items: center; }
+  .trace-stats span { display: flex; align-items: center; gap: 4px; }
+  .trace-warning {
+    background: rgba(230,180,76,0.12); border: 1px solid rgba(230,180,76,0.3);
+    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px;
+    font-size: 13px; color: var(--warn);
+  }
+  .trace-controls { display: flex; gap: 8px; margin-bottom: 12px; }
+  .trace-controls .btn-sm {
+    padding: 4px 12px; border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text2); font-size: 12px; cursor: pointer;
+  }
+  .trace-controls .btn-sm:hover { background: var(--border); color: var(--text); }
+  .trace-tree .leaf .badge.INTEGRATION { font-size: 10px; }
+  .trace-tree .leaf .leaf-meta { color: var(--text2); font-size: 11px; margin-left: 4px; }
+  .trace-tree summary { flex-wrap: wrap; }
+  .trace-tree .node-id {
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px;
+    color: var(--text2); font-weight: 400; word-break: break-all;
+    cursor: pointer; padding: 1px 4px; border-radius: 3px;
+    transition: background 0.15s;
+  }
+  .trace-tree .node-id:hover { background: var(--surface2); }
+  .trace-tree .node-id.copied { background: rgba(94,192,138,0.2); color: var(--success); }
+  .trace-tree .node-label { font-weight: 600; margin-right: 4px; }
+  .trace-tree .node-summary {
+    width: 100%; margin-top: 4px; padding: 6px 10px; font-size: 12px;
+    background: var(--surface); border-radius: 4px; color: var(--text);
+    display: flex; flex-direction: column; gap: 3px; margin-left: 22px;
+  }
+  .trace-tree .node-summary .sum-line { display: flex; gap: 6px; align-items: baseline; }
+  .trace-tree .node-summary .sum-label {
+    color: var(--text2); font-size: 11px; text-transform: uppercase;
+    min-width: 50px; flex-shrink: 0;
+  }
+  .trace-tree .node-summary .sum-text {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 600px;
+  }
+  .trace-tree .node-summary .sum-error { color: var(--error); }
+  .trace-tree .node-summary .sum-input { color: var(--info); }
+  .trace-tree .node-summary .sum-output { color: var(--text2); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Log Correlation</h1>
+  <span>Fetch, correlate, and analyze OpenSearch logs</span>
+</div>
+
+<div class="input-panel">
+  <div class="input-grid">
+    <div class="field">
+      <label>Tenant Name</label>
+      <input type="text" id="tenantName" placeholder="e.g. mccoy/aiccdev">
+    </div>
+    <div class="field">
+      <label>Agent Name</label>
+      <input type="text" id="agentName" placeholder="e.g. aicc">
+    </div>
+    <div class="field">
+      <label>Time Range</label>
+      <select id="timeRange">
+        <option value="last 1 hour">Last 1 hour</option>
+        <option value="last 6 hours">Last 6 hours</option>
+        <option value="last 24 hours">Last 24 hours</option>
+        <option value="last 7 days" selected>Last 7 days</option>
+        <option value="last 30 days">Last 30 days</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Connection ID</label>
+      <input type="text" id="connectionId" placeholder="Optional">
+    </div>
+    <div class="field">
+      <label>Session ID</label>
+      <input type="text" id="sessionId" placeholder="Optional">
+    </div>
+    <div class="field">
+      <label>Log Level</label>
+      <select id="logLevel">
+        <option value="">All</option>
+        <option value="error">Error</option>
+        <option value="warn">Warn</option>
+        <option value="info">Info</option>
+        <option value="debug">Debug</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Keyword</label>
+      <input type="text" id="keyword" placeholder="e.g. timeout">
+    </div>
+    <div class="field">
+      <label>Max per Index</label>
+      <select id="maxResults">
+        <option value="50">50</option>
+        <option value="100" selected>100</option>
+      </select>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="btn" id="fetchBtn" onclick="fetchLogs()">Fetch Logs</button>
+    <span class="status" id="statusMsg"></span>
+  </div>
+</div>
+
+<div class="tabs" id="tabBar" style="display:none;">
+  <div class="tab active" data-tab="summary" onclick="switchTab('summary')">Summary</div>
+  <div class="tab" data-tab="rawlogs" onclick="switchTab('rawlogs')">Raw Logs</div>
+  <div class="tab" data-tab="timeline" onclick="switchTab('timeline')">Timeline</div>
+  <div class="tab" data-tab="trace" onclick="switchTab('trace')">Trace</div>
+</div>
+
+<div id="emptyState" class="empty-state">
+  <p>Enter search criteria above and click <strong>Fetch Logs</strong> to begin.</p>
+</div>
+
+<div class="tab-content active" id="panel-summary"></div>
+<div class="tab-content" id="panel-rawlogs"></div>
+<div class="tab-content" id="panel-timeline"></div>
+<div class="tab-content" id="panel-trace"></div>
+
+<script>
+let reportData = null;
+
+function val(id) { return document.getElementById(id).value.trim(); }
+
+async function fetchLogs() {
+  const btn = document.getElementById('fetchBtn');
+  const status = document.getElementById('statusMsg');
+  btn.disabled = true;
+  status.textContent = 'Fetching logs...';
+
+  const body = {};
+  const t = val('tenantName'); if (t) body.tenant_name = t;
+  const a = val('agentName'); if (a) body.agent_name = a;
+  body.time_range = val('timeRange');
+  const c = val('connectionId'); if (c) body.connection_id = c;
+  const s = val('sessionId'); if (s) body.session_id = s;
+  const l = val('logLevel'); if (l) body.log_level = l;
+  const k = val('keyword'); if (k) body.keyword = k;
+  body.max_results_per_index = parseInt(val('maxResults'));
+
+  try {
+    const resp = await fetch('/api/correlate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    reportData = await resp.json();
+    if (reportData.error) {
+      status.textContent = 'Error: ' + reportData.error;
+      btn.disabled = false;
+      return;
+    }
+    status.textContent = `Done — ${reportData.summary.totalLogs} logs fetched in ${reportData.summary.timeRange.from} to ${reportData.summary.timeRange.to}`;
+    renderAll();
+    document.getElementById('tabBar').style.display = 'flex';
+    document.getElementById('emptyState').style.display = 'none';
+    switchTab('summary');
+  } catch (e) {
+    status.textContent = 'Request failed: ' + e.message;
+  }
+  btn.disabled = false;
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+}
+
+function renderAll() {
+  renderSummary();
+  renderRawLogs();
+  renderTimeline();
+  renderTrace();
+}
+
+function renderSummary() {
+  const s = reportData.summary;
+  const counts = reportData.rawLogCounts;
+  const maxCount = Math.max(1, ...Object.values(counts).filter(v => typeof v === 'number'));
+  const errors = reportData.errors || [];
+  const integrations = reportData.integrations || [];
+
+  let html = '<div class="summary-cards">';
+  html += card(s.totalLogs, 'Total Logs', 'info');
+  html += card(s.errorCount, 'Errors', 'error');
+  html += card(s.warnCount, 'Warnings', 'warn');
+  html += card(s.sessionsFound, 'Sessions', 'info');
+  html += card(s.connectionsFound, 'Connections', 'info');
+  html += card((s.channelsUsed || []).join(', ') || '—', 'Channels', 'success');
+  html += '</div>';
+
+  html += '<div class="sub-section"><h3>Log counts by index</h3>';
+  for (const [name, count] of Object.entries(counts)) {
+    const n = typeof count === 'number' ? count : 0;
+    const pct = (n / maxCount) * 100;
+    html += `<div class="index-bar">
+      <span class="name">${esc(name)}</span>
+      <div class="bar"><div class="bar-fill" style="width:${Math.max(pct, 2)}%">${n.toLocaleString()}</div></div>
+    </div>`;
+  }
+  html += '</div>';
+
+  if (errors.length) {
+    html += '<div class="sub-section"><h3>Errors</h3>';
+    for (const e of errors) {
+      html += `<div class="error-item">
+        <div class="err-msg">${esc(e.message)}</div>
+        <div class="err-meta">${esc(e.timestamp)} &middot; ${esc(e.source)} &middot; ${esc(e.module)}
+          ${e.connectionId ? ' &middot; conn: ' + esc(e.connectionId) : ''}
+          ${e.sessionId ? ' &middot; sess: ' + esc(e.sessionId) : ''}
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  if (integrations.length) {
+    html += '<div class="sub-section"><h3>Integration Calls</h3>';
+    html += '<table class="logs"><tr><th>Time</th><th>Endpoint</th><th>Status</th><th>Duration</th></tr>';
+    for (const i of integrations) {
+      html += `<tr><td>${esc(fmtTime(i.timestamp))}</td><td>${esc(i.endpoint)}</td>
+        <td>${i.status || '—'}</td><td>${i.duration_ms != null ? i.duration_ms + 'ms' : '—'}</td></tr>`;
+    }
+    html += '</table></div>';
+  }
+
+  document.getElementById('panel-summary').innerHTML = html;
+}
+
+function renderRawLogs() {
+  const tl = reportData.timeline || [];
+  let html = `<div class="log-count">${tl.length} log entries</div>`;
+  html += '<div class="log-table-wrap"><table class="logs">';
+  html += '<tr><th>Timestamp</th><th>Source</th><th>Level</th><th>Module</th><th>Type</th><th>Detail</th></tr>';
+  for (const r of tl) {
+    const lvl = r.level || 'INFO';
+    html += `<tr class="level-${lvl}">
+      <td style="white-space:nowrap">${esc(fmtTime(r.timestamp))}</td>
+      <td><span class="tl-meta"><span class="src">${esc(r.source)}</span></span></td>
+      <td><span class="level-badge ${lvl}">${lvl}</span></td>
+      <td>${esc(r.module || '')}</td>
+      <td>${esc(r.type || '')}</td>
+      <td>${esc(r.detail || r.endpoint || '')}</td>
+    </tr>`;
+  }
+  html += '</table></div>';
+  document.getElementById('panel-rawlogs').innerHTML = html;
+}
+
+function renderTimeline() {
+  const tl = reportData.timeline || [];
+  if (!tl.length) {
+    document.getElementById('panel-timeline').innerHTML = '<div class="empty-state"><p>No timeline events.</p></div>';
+    return;
+  }
+  let html = '<div class="timeline">';
+  for (const r of tl) {
+    const lvl = r.level || 'INFO';
+    const dotClass = lvl === 'ERROR' ? 'ERROR' : (r.type === 'integration' ? 'integration' : (lvl === 'WARN' ? 'WARN' : ''));
+    html += `<div class="tl-item">
+      <div class="tl-dot ${dotClass}"></div>
+      <div class="tl-card">
+        <div class="tl-meta">
+          <span>${esc(fmtTime(r.timestamp))}</span>
+          <span class="src">${esc(r.source)}</span>
+          <span class="level-badge ${lvl}">${lvl}</span>
+          ${r.module ? '<span>' + esc(r.module) + '</span>' : ''}
+          ${r.channel ? '<span>ch: ' + esc(r.channel) + '</span>' : ''}
+        </div>
+        <div class="tl-detail">${esc(r.detail || r.type || '')}</div>
+        ${r.endpoint ? '<div class="tl-endpoint">' + esc(r.endpoint) + ' &rarr; ' + (r.httpStatus || '') + (r.durationMs != null ? ' (' + r.durationMs + 'ms)' : '') + '</div>' : ''}
+      </div>
+    </div>`;
+  }
+  html += '</div>';
+  document.getElementById('panel-timeline').innerHTML = html;
+}
+
+function renderTrace() {
+  const events = reportData.traceEvents || [];
+  const panel = document.getElementById('panel-trace');
+  if (!events.length) {
+    panel.innerHTML = '<div class="empty-state"><p>No trace events available. Conversation logs may not have inputs/outputs, or all events were filtered as system noise.</p></div>';
+    return;
+  }
+
+  const sessions = new Map();
+  for (const ev of events) {
+    const sid = ev.sessionId || ev.sessionToken || 'unknown-session';
+    const cid = ev.connectionId || ev.connectionToken || 'unknown-connection';
+    const exp = ev.experienceName || ev.moduleName || (ev.source === 'nlp-server' ? 'nlp' : (ev.source === 'stream-server' ? 'stream' : 'general'));
+    if (!sessions.has(sid)) sessions.set(sid, { channel: '', connections: new Map(), minTs: ev.timestamp, maxTs: ev.timestamp });
+    const sess = sessions.get(sid);
+    if (ev.channelCode) sess.channel = ev.channelCode;
+    if (ev.timestamp < sess.minTs) sess.minTs = ev.timestamp;
+    if (ev.timestamp > sess.maxTs) sess.maxTs = ev.timestamp;
+    if (!sess.connections.has(cid)) sess.connections.set(cid, { experiences: new Map(), minTs: ev.timestamp, maxTs: ev.timestamp, hasError: false, errors: [], firstInput: '', firstOutput: '' });
+    const conn = sess.connections.get(cid);
+    if (ev.timestamp < conn.minTs) conn.minTs = ev.timestamp;
+    if (ev.timestamp > conn.maxTs) conn.maxTs = ev.timestamp;
+    if (ev.eventType === 'ERROR' || ev.level === 'ERROR') {
+      conn.hasError = true;
+      if (ev.text) conn.errors.push(ev.text);
+    }
+    if ((ev.eventType === 'INPUT' || ev.eventType === 'NLP') && !conn.firstInput && ev.text) conn.firstInput = ev.text;
+    if (ev.eventType === 'OUTPUT' && !conn.firstOutput && ev.text) conn.firstOutput = ev.text;
+    if (!conn.experiences.has(exp)) conn.experiences.set(exp, []);
+    conn.experiences.get(exp).push(ev);
+  }
+
+  let totalSessions = sessions.size;
+  let totalConnections = 0;
+  sessions.forEach(s => totalConnections += s.connections.size);
+
+  const isLarge = totalConnections > 5;
+  const openAttr = isLarge ? '' : ' open';
+
+  let html = '<div class="trace-stats">';
+  html += `<span>Sessions: <strong>${totalSessions}</strong></span>`;
+  html += `<span>Connections: <strong>${totalConnections}</strong></span>`;
+  html += `<span>Events: <strong>${events.length}</strong></span>`;
+  html += '</div>';
+
+  if (isLarge) {
+    html += `<div class="trace-warning">Showing ${totalConnections} conversations across ${totalSessions} sessions. Nodes are collapsed by default. Use a Connection ID or Session ID for a focused single-conversation trace.</div>`;
+  }
+
+  html += '<div class="trace-controls">';
+  html += '<button class="btn-sm" onclick="toggleAllTrace(true)">Expand All</button>';
+  html += '<button class="btn-sm" onclick="toggleAllTrace(false)">Collapse All</button>';
+  html += '</div>';
+
+  html += '<div class="trace-tree" id="traceTree">';
+
+  for (const [sid, sess] of sessions) {
+    let connCount = sess.connections.size;
+    let sessErrCount = 0;
+    sess.connections.forEach(c => { if (c.hasError) sessErrCount++; });
+    const sessTimeRange = fmtTimeShort(sess.minTs) + ' \u2013 ' + fmtTimeShort(sess.maxTs);
+
+    html += `<details${openAttr} class="node-session"><summary>`;
+    html += `<span class="node-label">Session</span>`;
+    html += `<span class="node-id" onclick="copyId(this, '${esc(sid)}')" title="Click to copy">${esc(sid)}</span>`;
+    html += `<span class="node-meta">${sess.channel ? esc(sess.channel) : ''} ${esc(sessTimeRange)}</span>`;
+    if (sessErrCount) html += `<span class="badge ERROR">${sessErrCount} err</span>`;
+    html += `<span class="node-count">${connCount} conn</span>`;
+    html += `</summary>`;
+
+    for (const [cid, conn] of sess.connections) {
+      const timeRange = fmtTimeShort(conn.minTs) + ' \u2013 ' + fmtTimeShort(conn.maxTs);
+      let expCount = conn.experiences.size;
+      let totalLeaves = 0;
+      conn.experiences.forEach(l => totalLeaves += l.length);
+
+      html += `<details${openAttr} class="node-connection"><summary>`;
+      html += `<span class="node-label">Connection</span>`;
+      html += `<span class="node-id" onclick="copyId(this, '${esc(cid)}')" title="Click to copy">${esc(cid)}</span>`;
+      html += `<span class="node-meta">${esc(timeRange)}</span>`;
+      if (conn.hasError) html += `<span class="badge ERROR">${conn.errors.length} errors</span>`;
+      html += `<span class="node-count">${expCount} exp, ${totalLeaves} events</span>`;
+      html += `</summary>`;
+
+      if (conn.firstInput || conn.firstOutput || conn.errors.length) {
+        html += '<div class="node-summary">';
+        if (conn.firstInput) html += `<div class="sum-line"><span class="sum-label">Input</span><span class="sum-text sum-input">${esc(conn.firstInput)}</span></div>`;
+        if (conn.firstOutput) html += `<div class="sum-line"><span class="sum-label">Output</span><span class="sum-text sum-output">${esc(conn.firstOutput)}</span></div>`;
+        if (conn.errors.length) html += `<div class="sum-line"><span class="sum-label">Error</span><span class="sum-text sum-error">${esc(conn.errors[0])}</span></div>`;
+        html += '</div>';
+      }
+
+      for (const [exp, leaves] of conn.experiences) {
+        const hasErr = leaves.some(l => l.eventType === 'ERROR' || l.level === 'ERROR');
+        const firstIn = leaves.find(l => l.eventType === 'INPUT' && l.text);
+        const firstOut = leaves.find(l => l.eventType === 'OUTPUT' && l.text);
+        const firstErr = leaves.find(l => (l.eventType === 'ERROR' || l.level === 'ERROR') && l.text);
+
+        html += `<details${openAttr} class="node-experience"><summary>`;
+        html += `${esc(exp)}`;
+        if (hasErr) html += `<span class="badge ERROR" style="font-size:10px">ERR</span>`;
+        html += `<span class="node-count">${leaves.length}</span>`;
+        html += `</summary>`;
+
+        if (firstIn || firstOut || firstErr) {
+          html += '<div class="node-summary">';
+          if (firstIn) html += `<div class="sum-line"><span class="sum-label">Input</span><span class="sum-text sum-input">${esc(firstIn.text)}</span></div>`;
+          if (firstOut) html += `<div class="sum-line"><span class="sum-label">Output</span><span class="sum-text sum-output">${esc(firstOut.text)}</span></div>`;
+          if (firstErr) html += `<div class="sum-line"><span class="sum-label">Error</span><span class="sum-text sum-error">${esc(firstErr.text)}</span></div>`;
+          html += '</div>';
+        }
+
+        for (const leaf of leaves) {
+          const t = leaf.eventType || 'EVENT';
+          let text = leaf.text || '';
+          if (!text) continue;
+          let meta = '';
+          if (t === 'INTEGRATION') {
+            if (leaf.httpStatus != null) meta += ` ${leaf.httpStatus}`;
+            if (leaf.durationMs != null) meta += ` ${leaf.durationMs}ms`;
+          }
+          if (t === 'STREAM' && leaf.durationMs != null) meta += ` ${leaf.durationMs}ms`;
+          const srcLabel = leaf.source ? `[${leaf.source}]` : '';
+          const reqId = leaf.requestId ? `req:${leaf.requestId.substring(0,8)}` : '';
+          html += `<div class="leaf">`;
+          html += `<span class="ts">${esc(fmtTimeShort(leaf.timestamp))}</span>`;
+          html += `<span class="badge ${t}">${t}</span>`;
+          html += `<span class="leaf-text">${esc(text)}</span>`;
+          if (srcLabel) html += `<span class="leaf-meta">${esc(srcLabel)}</span>`;
+          if (reqId) html += `<span class="leaf-meta">${esc(reqId)}</span>`;
+          if (meta) html += `<span class="leaf-meta">${esc(meta.trim())}</span>`;
+          html += `</div>`;
+        }
+
+        html += '</details>';
+      }
+      html += '</details>';
+    }
+    html += '</details>';
+  }
+  html += '</div>';
+  panel.innerHTML = html;
+}
+
+function copyId(el, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    el.classList.add('copied');
+    setTimeout(() => el.classList.remove('copied'), 1200);
+  });
+}
+
+function toggleAllTrace(expand) {
+  document.querySelectorAll('#traceTree details').forEach(d => d.open = expand);
+}
+
+function fmtTimeShort(ts) {
+  if (!ts) return '';
+  try {
+    const d = new Date(ts);
+    return d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch { return ts; }
+}
+
+function card(value, label, cls) {
+  return `<div class="card ${cls}"><div class="value">${value}</div><div class="label">${label}</div></div>`;
+}
+
+function esc(s) { if (s == null) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+
+function fmtTime(ts) {
+  if (!ts) return '';
+  try { const d = new Date(ts); return d.toLocaleString('en-US', { hour12: false, year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 }); }
+  catch { return ts; }
+}
+</script>
+</body>
+</html>

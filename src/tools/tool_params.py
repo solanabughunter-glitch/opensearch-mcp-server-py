@@ -570,3 +570,65 @@ class DeleteExperimentArgs(baseToolArgs):
 
     class Config:
         json_schema_extra = {'examples': [{'experiment_id': 'abc123'}]}
+
+
+class LogCorrelationArgs(baseToolArgs):
+    """Arguments for the LogCorrelationTool.
+
+    Supports three input modes:
+      Mode 1 (Tenant + Time): Provide tenant_name + time_range to fetch all logs.
+      Mode 2 (Trace by ID):   Provide connection_id or session_id to trace a call flow.
+      Mode 3 (Keyword):       Provide tenant_name + keyword + time_range to search.
+    """
+
+    tenant_name: Optional[str] = Field(
+        default=None,
+        description='Tenant name (e.g. "mccoy/aiccdev"). Required for Mode 1 and 3, auto-discovered in Mode 2.',
+    )
+    agent_name: Optional[str] = Field(
+        default=None,
+        description='Agent name (e.g. "aicc"). Recommended for narrowing results to the correct per-tenant index.',
+    )
+    time_range: Optional[str] = Field(
+        default='last 1 hour',
+        description='Time range to search, e.g. "last 1 hour", "last 24 hours", "last 7 days". Auto-calculated when using connection_id or session_id.',
+    )
+    log_level: Optional[str] = Field(
+        default=None,
+        description='Filter by minimum log level: "error", "warn", "info", or "debug". If omitted, all levels are returned.',
+    )
+    keyword: Optional[str] = Field(
+        default=None,
+        description='Keyword to search for in log messages (e.g. "timeout", "authentication", "error").',
+    )
+    connection_id: Optional[str] = Field(
+        default=None,
+        description='Connection ID to trace a specific call flow. Tenant and time range are auto-discovered from matching logs.',
+    )
+    session_id: Optional[str] = Field(
+        default=None,
+        description='Session ID to trace an entire user session. Tenant and time range are auto-discovered from matching logs.',
+    )
+    max_results_per_index: Optional[int] = Field(
+        default=50,
+        description='Maximum number of log entries to fetch per index type (default: 50, max: 100).',
+    )
+
+    class Config:
+        json_schema_extra = {
+            'examples': [
+                {
+                    'tenant_name': 'mccoy/aiccdev',
+                    'agent_name': 'aicc',
+                    'time_range': 'last 1 hour',
+                },
+                {
+                    'connection_id': 'b3ca2d94-193b-11f1-a692-0625df1ee109',
+                },
+                {
+                    'tenant_name': 'mccoy/aiccdev',
+                    'keyword': 'timeout',
+                    'time_range': 'last 24 hours',
+                },
+            ]
+        }

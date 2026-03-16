@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-correlation
+  namespace: log-correlation
+  labels:
+    app.kubernetes.io/name: log-correlation
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: log-correlation
+  ports:
+    - port: 80
+      targetPort: 8765
+      protocol: TCP
+      name: http

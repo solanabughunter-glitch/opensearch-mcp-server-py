@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: log-correlation
+  labels:
+    app.kubernetes.io/name: log-correlation
+    app.kubernetes.io/part-of: opensearch-mcp-server

@@ -32,6 +32,7 @@ from .tool_params import (
     GetExperimentArgs,
     CreateExperimentArgs,
     DeleteExperimentArgs,
+    LogCorrelationArgs,
     baseToolArgs,
 )
 from .tool_logging import log_tool_error
@@ -804,6 +805,7 @@ async def delete_experiment_tool(args: DeleteExperimentArgs) -> list[dict]:
 
 
 from .generic_api_tool import GenericOpenSearchApiArgs, generic_opensearch_api_tool
+from .log_correlation import log_correlation_tool
 
 
 # Registry of available OpenSearch tools with their metadata
@@ -1086,5 +1088,22 @@ TOOL_REGISTRY = {
         'args_model': CreateLLMJudgmentListArgs,
         'min_version': '3.1.0',
         'http_methods': 'PUT',
+    },
+    'LogCorrelationTool': {
+        'display_name': 'LogCorrelationTool',
+        'description': (
+            'Fetches, correlates, and structures logs from all OpenSearch log indices '
+            '(bot-engine.default, bot-engine.conversation, conversation, analytics, integration-manager) '
+            'into a unified debugging report. Supports three input modes: '
+            '(1) tenant_name + time_range for broad log retrieval, '
+            '(2) connection_id or session_id for tracing a specific call flow, '
+            '(3) tenant_name + keyword + time_range for targeted search. '
+            'Returns a structured report with summary stats, errors, chronological timeline, '
+            'integration call details, and per-index log counts.'
+        ),
+        'input_schema': LogCorrelationArgs.model_json_schema(),
+        'function': log_correlation_tool,
+        'args_model': LogCorrelationArgs,
+        'http_methods': 'GET',
     },
 }

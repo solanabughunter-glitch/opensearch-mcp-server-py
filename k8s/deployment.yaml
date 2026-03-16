@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-correlation
+  namespace: log-correlation
+  labels:
+    app.kubernetes.io/name: log-correlation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: log-correlation
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: log-correlation
+    spec:
+      containers:
+        - name: log-correlation
+          image: docker.io/shubh457/log-correlation:v1
+          ports:
+            - containerPort: 8765
+              protocol: TCP
+          env:
+            - name: LOG_CORRELATION_HOST
+              value: "0.0.0.0"
+            - name: LOG_CORRELATION_PORT
+              value: "8765"
+            - name: OPENSEARCH_URL
+              valueFrom:
+                secretKeyRef:
+                  name: opensearch-credentials
+                  key: OPENSEARCH_URL
+            - name: OPENSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: opensearch-credentials
+                  key: OPENSEARCH_USERNAME
+            - name: OPENSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: opensearch-credentials
+                  key: OPENSEARCH_PASSWORD
+            - name: OPENSEARCH_SSL_VERIFY
+              valueFrom:
+                secretKeyRef:
+                  name: opensearch-credentials
+                  key: OPENSEARCH_SSL_VERIFY
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8765
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8765
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

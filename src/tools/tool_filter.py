@@ -173,6 +173,7 @@ def process_tool_filter(
             'GenericOpenSearchApiTool',
             'DataDistributionTool',
             'LogPatternAnalysisTool',
+            'LogCorrelationTool',
         ]
 
         # Build core tools list using display names

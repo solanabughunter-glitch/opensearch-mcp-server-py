@@ -1,0 +1,35 @@
+# Optional — uncomment and configure when you need external access.
+#
+# For AWS ALB Ingress Controller, add:
+#   annotations:
+#     kubernetes.io/ingress.class: alb
+#     alb.ingress.kubernetes.io/scheme: internet-facing
+#     alb.ingress.kubernetes.io/target-type: ip
+#
+# For nginx-ingress, add:
+#   annotations:
+#     kubernetes.io/ingress.class: nginx
+#
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: log-correlation
+#   namespace: log-correlation
+#   labels:
+#     app.kubernetes.io/name: log-correlation
+#   annotations:
+#     kubernetes.io/ingress.class: alb
+#     alb.ingress.kubernetes.io/scheme: internal
+#     alb.ingress.kubernetes.io/target-type: ip
+# spec:
+#   rules:
+#     - host: log-correlation.internal.example.com
+#       http:
+#         paths:
+#           - path: /
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: log-correlation
+#                 port:
+#                   number: 80

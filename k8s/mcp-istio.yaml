@@ -1,0 +1,36 @@
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: opensearch-mcp-server-gateway
+  namespace: log-correlation
+  labels:
+    app: opensearch-mcp-server
+spec:
+  selector:
+    istio: internalgateway
+  servers:
+    - hosts:
+        - opensearch-mcp-server.dev.interface-internal.ai
+      port:
+        name: https
+        number: 443
+        protocol: HTTP
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: opensearch-mcp-server-vs
+  namespace: log-correlation
+  labels:
+    app: opensearch-mcp-server
+spec:
+  gateways:
+    - opensearch-mcp-server-gateway
+  hosts:
+    - opensearch-mcp-server.dev.interface-internal.ai
+  http:
+    - route:
+        - destination:
+            host: opensearch-mcp-server
+            port:
+              number: 80
