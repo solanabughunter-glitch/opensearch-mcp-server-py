@@ -101,6 +101,39 @@ async def test_generic_tool():
         print()
 
 
+@pytest.mark.asyncio
+async def test_write_disabled_message_does_not_leak_config():
+    """Test that the write-disabled error message does not expose config settings."""
+    from tools.tool_filter import set_allow_write_setting
+
+    original_allow_write = os.environ.get('OPENSEARCH_SETTINGS_ALLOW_WRITE', 'true')
+    os.environ['OPENSEARCH_SETTINGS_ALLOW_WRITE'] = 'false'
+    set_allow_write_setting(False)
+
+    try:
+        for method in ['PUT', 'POST', 'DELETE', 'PATCH']:
+            args = GenericOpenSearchApiArgs(
+                opensearch_cluster_name='',
+                path='/test_index/_doc/1',
+                method=method,
+            )
+            result = await generic_opensearch_api_tool(args)
+            error_text = result[0]['text']
+
+            assert 'Write operations are disabled' in error_text, (
+                f'Expected write-disabled message for {method}'
+            )
+            assert 'OPENSEARCH_SETTINGS_ALLOW_WRITE' not in error_text, (
+                f'Error message for {method} should not expose env var name'
+            )
+            assert 'allow_write' not in error_text, (
+                f'Error message for {method} should not expose config setting name'
+            )
+    finally:
+        os.environ['OPENSEARCH_SETTINGS_ALLOW_WRITE'] = original_allow_write
+        set_allow_write_setting(None)
+
+
 if __name__ == '__main__':
     print('Testing GenericOpenSearchApiTool...')
     print('Note: This test requires a running OpenSearch instance and proper configuration.')

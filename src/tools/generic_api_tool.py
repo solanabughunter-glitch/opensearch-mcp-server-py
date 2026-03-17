@@ -104,7 +104,7 @@ async def generic_opensearch_api_tool(args: GenericOpenSearchApiArgs) -> list[di
         if method in write_methods and not allow_write:
             return log_tool_error(
                 'GenericOpenSearchApiTool',
-                PermissionError(f'Write operations are disabled. Method "{method}" is not allowed. Enable write operations by setting OPENSEARCH_SETTINGS_ALLOW_WRITE=true or configuring allow_write: true in your config file.'),
+                PermissionError(f'Write operations are disabled. Method "{method}" is not allowed.'),
                 'validating request',
             )
 
