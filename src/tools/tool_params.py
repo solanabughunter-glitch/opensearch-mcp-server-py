@@ -9,13 +9,18 @@ from typing import Any, Dict, Optional, Type, TypeVar
 T = TypeVar('T', bound=BaseModel)
 
 
-def validate_args_for_mode(args_dict: Dict[str, Any], args_model_class: Type[T]) -> T:
+def validate_args_for_mode(
+    args_dict: Dict[str, Any],
+    args_model_class: Type[T],
+    input_schema: Optional[Dict[str, Any]] = None,
+) -> T:
     """
     Validation middleware that handles mode-specific validation.
 
     Args:
         args_dict: Dictionary of arguments provided by the user
         args_model_class: The Pydantic model class to validate against
+        input_schema: Optional tool input schema containing default values
 
     Returns:
         Validated instance of args_model_class
@@ -23,9 +28,20 @@ def validate_args_for_mode(args_dict: Dict[str, Any], args_model_class: Type[T])
     # Get the current mode from global state
     mode = get_mode()
 
+    args_dict = args_dict.copy()  # Don't modify the original
+
+    # Apply config-injected defaults from the tool's input_schema.
+    # These are defaults set via YAML config or env vars (e.g. memory_container_id).
+    # Only non-None defaults are injected to avoid interfering with
+    # model_fields_set tracking used by cross-field validators.
+    if input_schema:
+        properties = input_schema.get('properties', {})
+        for field_name, field_schema in properties.items():
+            if 'default' in field_schema and field_schema['default'] is not None and field_name not in args_dict:
+                args_dict[field_name] = field_schema['default']
+
     if mode == 'single':
         # In single mode, add default values for base fields
-        args_dict = args_dict.copy()  # Don't modify the original
         args_dict.setdefault('opensearch_cluster_name', '')
 
     try:

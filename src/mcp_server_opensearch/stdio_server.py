@@ -79,7 +79,7 @@ async def serve(
         tool = enabled_tools.get(found_tool_key)
         from tools.tool_params import validate_args_for_mode
 
-        parsed = validate_args_for_mode(arguments, tool['args_model'])
+        parsed = validate_args_for_mode(arguments, tool['args_model'], tool.get('input_schema'))
         return await tool['function'](parsed)
 
     # Start stdio-based MCP server

@@ -252,17 +252,6 @@ def _apply_validated_configs(
                             properties[arg_name]['default'] = overrides[DEFAULT_STRING]
                             if 'required' in input_schema and arg_name in input_schema['required']:
                                 input_schema['required'].remove(arg_name)
-                            try:
-                                if (
-                                    args_model
-                                    and hasattr(args_model, 'model_fields')
-                                    and arg_name in args_model.model_fields
-                                ):
-                                    args_model.model_fields[arg_name].default = overrides[
-                                        DEFAULT_STRING
-                                    ]
-                            except Exception:
-                                pass
                 tool_info['input_schema'] = input_schema
             else:
                 tool_info[field_name] = field_value
