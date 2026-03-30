@@ -30,8 +30,8 @@ def validate_args_for_mode(
 
     args_dict = args_dict.copy()  # Don't modify the original
 
-    # Apply config-injected defaults from the tool's input_schema.
-    # These are defaults set via YAML config or env vars (e.g. memory_container_id).
+    # Inject defaults that were set in the tool's input_schema by the server
+    # at startup (e.g. memory_container_id from agentic_memory config / env var).
     # Only non-None defaults are injected to avoid interfering with
     # model_fields_set tracking used by cross-field validators.
     if input_schema:

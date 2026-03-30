@@ -3,6 +3,7 @@
 
 import copy
 import logging
+import os
 import re
 import yaml
 from typing import Dict, Any
@@ -13,7 +14,6 @@ DISPLAY_NAME_STRING = 'display_name'
 DESCRIPTION_STRING = 'description'
 ARGS_STRING = 'args'
 MAX_SIZE_LIMIT = 'max_size_limit'
-DEFAULT_STRING = 'default'
 
 # Regex pattern for tool display name validation
 DISPLAY_NAME_PATTERN = r'^[a-zA-Z0-9_-]+$'
@@ -29,34 +29,19 @@ def is_valid_display_name_pattern(name: str) -> bool:
     return re.match(DISPLAY_NAME_PATTERN, name) is not None
 
 
-def _parse_args_map(tool_name: str, raw_args: Any) -> dict[str, dict[str, Any]]:
+def _parse_args_map(tool_name: str, raw_args: Any) -> dict[str, dict[str, str]]:
     if not isinstance(raw_args, dict):
         logging.warning(
-            f"Invalid 'args' for tool '{tool_name}'. Must be a mapping of arg -> string or dict."
+            f"Invalid 'args' for tool '{tool_name}'. Must be a mapping of arg -> string."
         )
         return {}
-    parsed: dict[str, dict[str, Any]] = {}
+    parsed: dict[str, dict[str, str]] = {}
     for arg_name, value in raw_args.items():
         if isinstance(value, str):
             parsed[arg_name] = {DESCRIPTION_STRING: value}
-        elif isinstance(value, dict):
-            arg_config = {}
-            if DESCRIPTION_STRING in value:
-                if not isinstance(value[DESCRIPTION_STRING], str):
-                    raise ValueError(
-                        f"Description for argument '{arg_name}' in tool '{tool_name}' must be a string."
-                    )
-                arg_config[DESCRIPTION_STRING] = value[DESCRIPTION_STRING]
-            if DEFAULT_STRING in value:
-                arg_config[DEFAULT_STRING] = value[DEFAULT_STRING]
-            if not arg_config:
-                raise ValueError(
-                    f"Configuration for argument '{arg_name}' in tool '{tool_name}' must contain 'description' or 'default'."
-                )
-            parsed[arg_name] = arg_config
         else:
             raise ValueError(
-                f"Configuration for argument '{arg_name}' in tool '{tool_name}' must be a string or a dict."
+                f"Description for argument '{arg_name}' in tool '{tool_name}' must be a string."
             )
     return parsed
 
@@ -234,27 +219,62 @@ def _apply_validated_configs(
                 args_model = tool_info.get('args_model')
 
                 for arg_name, overrides in field_value.items():
-                    if arg_name in properties:
-                        if DESCRIPTION_STRING in overrides:
-                            properties[arg_name]['description'] = overrides[DESCRIPTION_STRING]
-                            try:
-                                if (
-                                    args_model
-                                    and hasattr(args_model, 'model_fields')
-                                    and arg_name in args_model.model_fields
-                                ):
-                                    args_model.model_fields[arg_name].description = overrides[
-                                        DESCRIPTION_STRING
-                                    ]
-                            except Exception:
-                                pass
-                        if DEFAULT_STRING in overrides:
-                            properties[arg_name]['default'] = overrides[DEFAULT_STRING]
-                            if 'required' in input_schema and arg_name in input_schema['required']:
-                                input_schema['required'].remove(arg_name)
+                    if DESCRIPTION_STRING in overrides and arg_name in properties:
+                        properties[arg_name]['description'] = overrides[DESCRIPTION_STRING]
+                        try:
+                            if (
+                                args_model
+                                and hasattr(args_model, 'model_fields')
+                                and arg_name in args_model.model_fields
+                            ):
+                                args_model.model_fields[arg_name].description = overrides[
+                                    DESCRIPTION_STRING
+                                ]
+                        except Exception:
+                            pass
                 tool_info['input_schema'] = input_schema
             else:
                 tool_info[field_name] = field_value
+
+
+def _apply_memory_container_defaults(
+    custom_registry: Dict[str, Any], container_id: str
+) -> None:
+    """
+    Set memory_container_id as a default in the input_schema of all agentic memory tools.
+
+    This modifies the JSON schema so that:
+    1. MCP clients see the default value (and the field is no longer required)
+    2. validate_args_for_mode can inject it at runtime when agents omit it
+
+    :param custom_registry: The registry to modify
+    :param container_id: The memory container ID to set as default
+    """
+    agentic_memory_tool_names = [
+        'CreateAgenticMemorySessionTool',
+        'AddAgenticMemoriesTool',
+        'GetAgenticMemoryTool',
+        'UpdateAgenticMemoryTool',
+        'DeleteAgenticMemoryByIDTool',
+        'DeleteAgenticMemoryByQueryTool',
+        'SearchAgenticMemoryTool',
+    ]
+
+    for tool_name in agentic_memory_tool_names:
+        if tool_name not in custom_registry:
+            continue
+
+        tool_info = custom_registry[tool_name]
+        base_schema = tool_info.get('input_schema') or {}
+        input_schema = copy.deepcopy(base_schema)
+        properties = input_schema.get('properties') or {}
+
+        if 'memory_container_id' in properties:
+            properties['memory_container_id']['default'] = container_id
+            if 'required' in input_schema and 'memory_container_id' in input_schema['required']:
+                input_schema['required'].remove('memory_container_id')
+
+        tool_info['input_schema'] = input_schema
 
 
 def apply_custom_tool_config(
@@ -279,35 +299,10 @@ def apply_custom_tool_config(
     """
     custom_registry = copy.deepcopy(tool_registry)
 
+    # Apply memory_container_id defaults to agentic memory tools
     container_id = get_memory_container_id_from_config(config_file_path)
-    agentic_memory_tool_names = [
-        'CreateAgenticMemorySessionTool',
-        'AddAgenticMemoriesTool',
-        'GetAgenticMemoryTool',
-        'UpdateAgenticMemoryTool',
-        'DeleteAgenticMemoryByIDTool',
-        'DeleteAgenticMemoryByQueryTool',
-        'SearchAgenticMemoryTool',
-    ]
-
-    memory_config = {}
     if container_id:
-        for tool_name in agentic_memory_tool_names:
-            if tool_name in custom_registry:
-                memory_config[tool_name] = {
-                    ARGS_STRING: {
-                        'memory_container_id': {
-                            DEFAULT_STRING: container_id
-                        }
-                    }
-                }
-
-    # Apply memory_config
-    if memory_config:
-        memory_configs_parsed = _load_config_from_file(memory_config)
-        if memory_configs_parsed:
-            _validate_config(memory_configs_parsed, custom_registry)
-            _apply_validated_configs(custom_registry, memory_configs_parsed)
+        _apply_memory_container_defaults(custom_registry, container_id)
 
     # Load configuration from file
     config_from_file = {}
@@ -366,7 +361,6 @@ def get_memory_container_id_from_config(config_file_path: str = '') -> str:
         except Exception as e:
             logging.debug(f'Could not load memory_container_id from config file {config_file_path}: {e}')
 
-    import os
     container_id = os.getenv('OPENSEARCH_MEMORY_CONTAINER_ID', '')
     if container_id:
         logging.info(f'Using memory_container_id from environment variable: {container_id}')
