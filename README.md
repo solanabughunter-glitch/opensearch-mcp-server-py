@@ -60,6 +60,12 @@ The following tools are available but disabled by default. To enable them, see t
 - [GetNodesHotThreadsTool](https://docs.opensearch.org/latest/api-reference/nodes-apis/nodes-hot-threads/): Gets information about hot threads in the cluster nodes from the /\_nodes/hot_threads endpoint.
 - [GetAllocationTool](https://docs.opensearch.org/latest/api-reference/cat/cat-allocation/): Gets information about shard allocation across nodes in the cluster from the /\_cat/allocation endpoint.
 - [GetLongRunningTasksTool](https://docs.opensearch.org/latest/api-reference/cat/cat-tasks/): Gets information about long-running tasks in the cluster, sorted by running time in descending order.
+
+### Agentic Memory Tools (Disabled by Default)
+The following tools provide AI agents with persistent memory capabilities using the [OpenSearch Agentic Memory API](https://docs.opensearch.org/latest/ml-commons-plugin/agentic-memory/). These tools require OpenSearch **3.3.0 or later** and are **disabled by default**. They are automatically enabled when a `memory_container_id` is configured via the `agentic_memory` section in the config file or the `OPENSEARCH_MEMORY_CONTAINER_ID` environment variable. See [Agentic Memory Usage](USER_GUIDE.md#agentic-memory-usage) in the User Guide for setup instructions.
+
+**Note:** Container creation is an infrastructure setup operation that requires careful configuration of embedding models, LLM connectors, strategies, and index settings. Create your memory container using the [OpenSearch API](https://docs.opensearch.org/latest/ml-commons-plugin/api/agentic-memory-apis/create-memory-container/) or dashboard before configuring the MCP server.
+
 - [CreateAgenticMemorySessionTool](https://docs.opensearch.org/latest/ml-commons-plugin/api/agentic-memory-apis/create-session/): Creates a new session within a memory container.
 - [AddAgenticMemoriesTool](https://docs.opensearch.org/latest/ml-commons-plugin/api/agentic-memory-apis/add-memory/): Adds conversational or structured data memories to a container.
 - [GetAgenticMemoryTool](https://docs.opensearch.org/latest/ml-commons-plugin/api/agentic-memory-apis/get-memory/): Retrieves a specific memory by its ID and type.
@@ -171,15 +177,9 @@ Advanced analysis tools for data analysis and troubleshooting.
   - `opensearch_url` (optional): The OpenSearch cluster URL to connect to
   - `limit` (optional): The maximum number of tasks to return. Default is 10.
 
-- **CreateAgenticMemoryContainerTool**
-
-  - `name` (required): The name of the memory container. *(Body Parameter)*
-  - `description` (optional): The description of the memory container. *(Body Parameter)*
-  - `configuration` (required): The memory container configuration. See [The configuration object](https://docs.opensearch.org/latest/ml-commons-plugin/api/agentic-memory-apis/create-memory-container/#the-configuration-object). *(Body Parameter)*
-
 - **CreateAgenticMemorySessionTool**
 
-  - `memory_container_id` (required): The ID of the memory container where the session will be created. *(Path Parameter)*
+  - `memory_container_id` (auto-populated): The ID of the memory container where the session will be created. Automatically set when configured via `agentic_memory` config or `OPENSEARCH_MEMORY_CONTAINER_ID` env var. *(Path Parameter)*
   - `session_id` (optional): A custom session ID. If not provided, a random ID is generated. *(Body Parameter)*
   - `summary` (optional): A session summary or description. *(Body Parameter)*
   - `metadata` (optional): Additional metadata for the session provided as key-value pairs. *(Body Parameter)*
@@ -187,7 +187,7 @@ Advanced analysis tools for data analysis and troubleshooting.
 
 - **AddAgenticMemoriesTool**
 
-  - `memory_container_id` (required): The ID of the memory container to add the memory to. *(Path Parameter)*
+  - `memory_container_id` (auto-populated): The ID of the memory container to add the memory to. Automatically set when configured. *(Path Parameter)*
   - `messages` (conditional): A list of messages. Required when `payload_type` is `conversational`. *(Body Parameter)*
   - `structured_data` (conditional): Structured data content. Required when `payload_type` is `data`. *(Body Parameter)*
   - `binary_data` (optional): 	Binary data content encoded as a Base64 string for binary payloads. *(Body Parameter)*
@@ -199,20 +199,20 @@ Advanced analysis tools for data analysis and troubleshooting.
 
 - **GetAgenticMemoryTool**
 
-  - `memory_container_id` (required): The ID of the memory container from which to retrieve the memory. *(Path Parameter)*
+  - `memory_container_id` (auto-populated): The ID of the memory container from which to retrieve the memory. Automatically set when configured. *(Path Parameter)*
   - `type` (required): The memory type. Valid values are `sessions`, `working`, `long-term`, and `history`. *(Path Parameter)*
   - `id` (required): The ID of the memory to retrieve. *(Path Parameter)*
 
 - **SearchAgenticMemoryTool**
 
-  - `memory_container_id` (required): The ID of the memory container. *(Path Parameter)*
+  - `memory_container_id` (auto-populated): The ID of the memory container. Automatically set when configured. *(Path Parameter)*
   - `type` (required): The memory type. Valid values are `sessions`, `working`, `long-term`, and `history`. *(Path Parameter)*
   - `query` (required): The search query using OpenSearch [query DSL](https://docs.opensearch.org/latest/query-dsl/). *(Body Parameter)*
   - `sort` (optional): Sort specification for the search results. *(Body Parameter)*
 
 - **UpdateAgenticMemoryTool**
 
-  - `memory_container_id` (required): The ID of the memory container. *(Path Parameter)*
+  - `memory_container_id` (auto-populated): The ID of the memory container. Automatically set when configured. *(Path Parameter)*
   - `type` (required): The memory type (`sessions`, `working`, or `long-term`).*(Path Parameter)*
   - `id` (required): The ID of the memory to update.*(Path Parameter)*
   - **Session memory request fields:**
@@ -232,13 +232,13 @@ Advanced analysis tools for data analysis and troubleshooting.
 
 - **DeleteAgenticMemoryByIDTool**
 
-  - `memory_container_id` (required): The ID of the memory container from which to delete the memory. *(Path Parameter)*
+  - `memory_container_id` (auto-populated): The ID of the memory container from which to delete the memory. Automatically set when configured. *(Path Parameter)*
   - `type` (required): The type of memory to delete. Valid values are `sessions`, `working`, `long-term`, and `history`. *(Path Parameter)*
   - `id` (required): The ID of the specific memory to delete. *(Path Parameter)*
 
 - **DeleteAgenticMemoryByQueryTool**
 
-  - `memory_container_id` (required): The ID of the memory container from which to delete the memory. *(Path Parameter)*
+  - `memory_container_id` (auto-populated): The ID of the memory container from which to delete the memory. Automatically set when configured. *(Path Parameter)*
   - `type` (required): The type of memory to delete. Valid values are `sessions`, `working`, `long-term`, and `history`. *(Path Parameter)*
   - `query` (required): The OpenSearch [DSL query](https://docs.opensearch.org/latest/query-dsl/) to match memories for deletion. *(Body Parameter)*
 

@@ -469,6 +469,12 @@ python -m mcp_server_opensearch --mode multi
 | `OPENSEARCH_DISABLED_TOOLS_REGEX` | No | `''` | Comma-separated list of regex patterns for disabled tools |
 | `OPENSEARCH_SETTINGS_ALLOW_WRITE` | No | `"true"` | Enable/disable write operations (`"true"` or `"false"`) |
 
+### Agentic Memory Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `OPENSEARCH_MEMORY_CONTAINER_ID` | No | `''` | Memory container ID for agentic memory tools. When set, agentic memory tools are automatically enabled and `memory_container_id` is pre-filled in all tool calls. Config file `agentic_memory.memory_container_id` takes precedence over this variable. |
+
 *Required in single mode or when not using multi-mode config file
 
 ## Multi-Mode Cluster Configuration
@@ -682,45 +688,55 @@ Response size exceeded limit of 10485760 bytes. Stopped reading at 15728640 byte
 
 ## Agentic Memory Usage
 
-The Agentic Memory tools allow you to maintain state and long-term memory for AI agents using OpenSearch.
+The Agentic Memory tools allow AI agents to maintain state and long-term memory using [OpenSearch Agentic Memory](https://docs.opensearch.org/latest/ml-commons-plugin/agentic-memory/).
 **Note:** These tools require OpenSearch version **3.3.0 or later**.
 
-The typical workflow involves creating a container, establishing a session, and then reading/writing memories.
+### Prerequisites
 
-### 1. Create a Memory Container
-First, you need a container to define how memories are stored and processed (e.g., which embedding models and strategies to use).
+Before using the agentic memory tools, you must create a memory container in OpenSearch. Container creation is an infrastructure setup operation that requires careful configuration of embedding models, LLM connectors, strategies, and index settings. This is typically a one-time admin operation, not something agents should do at runtime.
 
-**Tool:** `CreateAgenticMemoryContainerTool`
-```json
-{
-  "name": "vacation-planner-memory",
-  "description": "Storage for travelers' preferences and trip history",
-  "configuration": {
-    "embedding_model_type": "TEXT_EMBEDDING",
-    "embedding_model_id": "your-embedding-model-id",
-    "embedding_dimension": 1024,
-    "llm_id": "your-llm-model-id",
-    "strategies": [
-      {
-        "type": "USER_PREFERENCE",
-        "namespace": ["traveler_id"]
-      },
-      {
-        "type": "SEMANTIC",
-        "namespace": ["traveler_id"]
-      }
-    ]
-  }
-}
+Create a memory container using the [OpenSearch Create Container API](https://docs.opensearch.org/latest/ml-commons-plugin/api/agentic-memory-apis/create-container/) or the OpenSearch dashboard. Note the `memory_container_id` returned — you will need it for configuration.
+
+### Enabling Agentic Memory Tools
+
+Agentic memory tools are **disabled by default**. They are automatically enabled when a `memory_container_id` is configured. There are two ways to configure it:
+
+#### Option 1: Config File (Recommended)
+
+Add an `agentic_memory` section to your YAML config file:
+
+```yaml
+agentic_memory:
+  memory_container_id: "your-container-id-here"
 ```
 
-### 2. Create a Session
+Then start the server with the config file:
+```bash
+python -m mcp_server_opensearch --config path/to/config.yml
+```
+
+#### Option 2: Environment Variable
+
+Set the `OPENSEARCH_MEMORY_CONTAINER_ID` environment variable:
+
+```bash
+export OPENSEARCH_MEMORY_CONTAINER_ID="your-container-id-here"
+```
+
+**Priority:** Config file setting takes precedence over the environment variable.
+
+When configured, the `memory_container_id` is **automatically populated** into all agentic memory tool calls — agents do not need to pass it manually with every request.
+
+### Workflow
+
+The typical workflow involves establishing a session and then reading/writing memories.
+
+#### 1. Create a Session
 Start a new planning session for a summer trip.
 
 **Tool:** `CreateAgenticMemorySessionTool`
 ```json
 {
-  "memory_container_id": "<container_id_from_step_1>",
   "session_id": "summer-trip-2025",
   "namespace": {
     "traveler_id": "adventurous_alice"
@@ -732,13 +748,12 @@ Start a new planning session for a summer trip.
 }
 ```
 
-### 3. Add Memories
+#### 2. Add Memories
 Store the initial context. Alice shares her first ideas for the trip - quiet museum days and culinary experiences. The agent stores these conversational messages and runs inference (due to `infer: true`) to extract facts and preferences for future recommendations.
 
 **Tool:** `AddAgenticMemoriesTool`
 ```json
 {
-  "memory_container_id": "<container_id>",
   "payload_type": "conversational",
   "namespace": {
     "traveler_id": "adventurous_alice",
@@ -758,13 +773,12 @@ Store the initial context. Alice shares her first ideas for the trip - quiet mus
 }
 ```
 
-### 4. Search Memories
+#### 3. Search Memories
 Later, the agent needs to make a restaurant recommendation. It searches the working memory to retrieve Alice's specific food preferences (like her love for gelato) to ensure the suggestion matches her taste.
 
 **Tool:** `SearchAgenticMemoryTool`
 ```json
 {
-  "memory_container_id": "<container_id>",
   "type": "working",
   "query": {
     "match": {
@@ -781,7 +795,7 @@ Later, the agent needs to make a restaurant recommendation. It searches the work
 }
 ```
 
-### 5. Update & Delete
+#### 4. Update & Delete
 Alice changes her mind.
 
 1. We update the session summary to reflect the new goal (clubs and grappa).
@@ -791,7 +805,6 @@ Alice changes her mind.
 **Tool:** `UpdateAgenticMemoryTool`
 ```json
 {
-  "memory_container_id": "<container_id>",
   "type": "sessions",
   "id": "<session_id>",
   "summary": "Planning a trip to Italy focused on nightlife, clubs, and drinking grappa, while retaining the interest in gelato.",
@@ -805,7 +818,6 @@ Alice changes her mind.
 **Tool:** `DeleteAgenticMemoryByQueryTool`
 ```json
 {
-  "memory_container_id": "<container_id>",
   "type": "working",
   "query": {
     "match": {
@@ -814,6 +826,8 @@ Alice changes her mind.
   }
 }
 ```
+
+> **Note:** The `memory_container_id` field is omitted from the examples above because it is automatically populated from your configuration. If you need to override it for a specific call, you can still pass it explicitly.
 
 ## LangChain Integration
 

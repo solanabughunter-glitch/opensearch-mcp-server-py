@@ -5,7 +5,8 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ## [Unreleased]
 
 ### Added
-- Add new toolset for the OpenSearch Agentic Memory API: `CreateAgenticMemorySessionTool`, `AddAgenticMemoriesTool`, `GetAgenticMemoryTool`, `UpdateAgenticMemoryTool`, `DeleteAgenticMemoryByIDTool`, `DeleteAgenticMemoryByQueryTool`, and `SearchAgenticMemoryTool`. ([#138](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/138))
+- Add new toolset for the OpenSearch Agentic Memory API: `CreateAgenticMemorySessionTool`, `AddAgenticMemoriesTool`, `GetAgenticMemoryTool`, `UpdateAgenticMemoryTool`, `DeleteAgenticMemoryByIDTool`, `DeleteAgenticMemoryByQueryTool`, and `SearchAgenticMemoryTool`. Agentic memory tools are disabled by default and automatically enabled when `memory_container_id` is configured via the `agentic_memory` config section or `OPENSEARCH_MEMORY_CONTAINER_ID` environment variable. The `memory_container_id` is automatically pre-filled in all tool calls so agents don't need to pass it manually. ([#138](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/138))
+- Add support for setting default values for tool arguments via config ([#138](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/138))
 
 - Optimize JSON output token usage by removing formatting whitespace across all tools ([#167](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/167))
 - Support basic auth through header in HTTP transport ([#152](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/152))
@@ -15,6 +16,7 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Fix search index tool time format issue. ([#159](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/159))
 
 ### Removed
+- Remove `CreateAgenticMemoryContainerTool` - container creation is an infrastructure setup operation that should be done via the OpenSearch API or dashboard, not at agent runtime ([#138](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/138))
 
 ## [Released 0.6.1]
 ### Added
