@@ -385,6 +385,10 @@ async def get_tools(tool_registry: dict, config_file_path: str = '') -> dict:
         tool_info = info.copy()
         tool_name = tool_info['display_name']
 
+        # Skip multi-only tools in single mode
+        if info.get('multi_only') and mode != 'multi':
+            continue
+
         # If tool is not compatible with the current OpenSearch version, skip, don't enable
         if not is_tool_compatible(version, info):
             continue

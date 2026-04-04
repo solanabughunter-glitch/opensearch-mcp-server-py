@@ -23,6 +23,7 @@ from .tool_params import (
     GetSearchConfigurationArgs,
     GetSegmentsArgs,
     GetShardsArgs,
+    ListClustersArgs,
     ListIndicesArgs,
     SearchIndexArgs,
     GetQuerySetArgs,
@@ -79,6 +80,16 @@ from opensearch.helper import (
     search_experiments,
 )
 from .skills_tools import SKILLS_TOOLS_REGISTRY
+from mcp_server_opensearch.clusters_information import cluster_registry
+
+
+async def list_clusters_tool(args: ListClustersArgs) -> list[dict]:
+    try:
+        cluster_names = list(cluster_registry.keys())
+        formatted_names = json.dumps(cluster_names, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Available clusters:\n{formatted_names}'}]
+    except Exception as e:
+        return log_tool_error('ListClustersTool', e, 'listing clusters')
 
 
 async def check_tool_compatibility(tool_name: str, args: baseToolArgs = None):
@@ -1218,5 +1229,14 @@ TOOL_REGISTRY = {
         'args_model': CreateLLMJudgmentListArgs,
         'min_version': '3.1.0',
         'http_methods': 'PUT',
+    },
+    'ListClustersTool': {
+        'display_name': 'ListClustersTool',
+        'description': 'Lists all available OpenSearch clusters configured in the server. Returns the cluster names that can be used with other tools.',
+        'input_schema': ListClustersArgs.model_json_schema(),
+        'function': list_clusters_tool,
+        'args_model': ListClustersArgs,
+        'http_methods': 'GET',
+        'multi_only': True,
     },
 }
