@@ -1,24 +1,34 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import re
-import os
 import json
 import logging
+import os
+import re
 from .tool_params import baseToolArgs
-from .tools import TOOL_REGISTRY
+from .tools import TOOL_REGISTRY  # noqa: F401
 from .utils import (
     is_tool_compatible,
-    parse_comma_separated,
     load_yaml_config,
+    parse_comma_separated,
     validate_tools,
 )
-from opensearch.helper import get_opensearch_version
 from mcp_server_opensearch.global_state import get_mode
+from opensearch.helper import get_opensearch_version
+
 
 # Global variable to store the resolved allow_write setting
 # This is set during server initialization and used by individual tools
 _resolved_allow_write_setting = None
+ASYNC_SEARCH_TOOL_NAMES = {
+    'SubmitAsyncSearchTool',
+    'GetAsyncSearchTool',
+    'DeleteAsyncSearchTool',
+}
+ASYNC_SEARCH_PLUGIN_MARKERS = (
+    'asynchronous-search',
+    'asynchronous_search',
+)
 
 
 def process_regex_patterns(regex_list, tool_names):
@@ -29,6 +39,50 @@ def process_regex_patterns(regex_list, tool_names):
             if re.match(regex, tool_name, re.IGNORECASE):
                 matching_tools.append(tool_name)
     return matching_tools
+
+
+async def is_async_search_supported(args: baseToolArgs) -> bool:
+    """Detect whether async search is supported by the connected cluster.
+
+    In single mode, we use this to hide async-search tools when the cluster
+    does not have the async-search plugin/endpoint available.
+
+    The detection intentionally fails open: if plugin discovery is unavailable
+    due to auth or transport issues, this function returns True so we do not
+    accidentally hide tools for a cluster that may support them.
+    """
+    from opensearch.client import get_opensearch_client
+
+    try:
+        async with get_opensearch_client(args) as client:
+            response = await client.transport.perform_request(
+                method='GET',
+                url='/_cat/plugins',
+                params={'format': 'json', 'local': 'true'},
+            )
+    except Exception as exc:
+        logging.debug(f'Could not probe async-search support from plugin list: {exc}')
+        return True
+
+    if isinstance(response, str):
+        try:
+            response = json.loads(response)
+        except json.JSONDecodeError:
+            logging.debug('Unexpected non-JSON response from /_cat/plugins; keeping async tools visible')
+            return True
+
+    if not isinstance(response, list):
+        logging.debug('Unexpected response shape from /_cat/plugins; keeping async tools visible')
+        return True
+
+    for plugin in response:
+        if not isinstance(plugin, dict):
+            continue
+        plugin_text = ' '.join(str(value).lower() for value in plugin.values())
+        if any(marker in plugin_text for marker in ASYNC_SEARCH_PLUGIN_MARKERS):
+            return True
+
+    return False
 
 
 def set_allow_write_setting(allow_write: bool) -> None:
@@ -165,6 +219,9 @@ def process_tool_filter(
             'ListIndexTool',
             'IndexMappingTool',
             'SearchIndexTool',
+            'SubmitAsyncSearchTool',
+            'GetAsyncSearchTool',
+            'DeleteAsyncSearchTool',
             'GetShardsTool',
             'ClusterHealthTool',
             'CountTool',
@@ -380,10 +437,24 @@ async def get_tools(tool_registry: dict, config_file_path: str = '') -> dict:
         **{k: v for k, v in env_config.items() if not config_file_path},
     )
 
+    async_search_supported = True
+    if any(tool_name in tool_registry for tool_name in ASYNC_SEARCH_TOOL_NAMES):
+        async_search_supported = await is_async_search_supported(
+            baseToolArgs(opensearch_cluster_name='')
+        )
+        if not async_search_supported:
+            logging.info(
+                'Async search plugin/endpoint not detected on this cluster. '
+                'Hiding async-search tools in single mode.'
+            )
+
     for name, info in tool_registry.items():
         # Create a copy to avoid modifying the original tool info
         tool_info = info.copy()
         tool_name = tool_info['display_name']
+
+        if name in ASYNC_SEARCH_TOOL_NAMES and not async_search_supported:
+            continue
 
         # If tool is not compatible with the current OpenSearch version, skip, don't enable
         if not is_tool_compatible(version, info):

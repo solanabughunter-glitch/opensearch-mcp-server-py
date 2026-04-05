@@ -36,6 +36,9 @@ from .tool_params import (
     SearchSearchConfigurationsArgs,
     SearchJudgmentsArgs,
     SearchExperimentsArgs,
+    SubmitAsyncSearchArgs,
+    GetAsyncSearchArgs,
+    DeleteAsyncSearchArgs,
     baseToolArgs,
 )
 from .tool_logging import log_tool_error
@@ -77,6 +80,9 @@ from opensearch.helper import (
     search_search_configurations,
     search_judgments,
     search_experiments,
+    submit_async_search,
+    get_async_search,
+    delete_async_search,
 )
 from .skills_tools import SKILLS_TOOLS_REGISTRY
 
@@ -883,6 +889,63 @@ async def search_experiments_tool(args: SearchExperimentsArgs) -> list[dict]:
         return log_tool_error('SearchExperimentsTool', e, 'searching experiments')
 
 
+async def submit_async_search_tool(args: SubmitAsyncSearchArgs) -> list[dict]:
+    """Tool to submit an asynchronous search request to OpenSearch.
+
+    Returns a search ID that can be used to check status and retrieve results later.
+    Useful for long-running or complex queries that may time out with synchronous search.
+
+    Args:
+        args: SubmitAsyncSearchArgs containing index, query_dsl, and async options
+
+    Returns:
+        list[dict]: Async search submission result in MCP format
+    """
+    try:
+        await check_tool_compatibility('SubmitAsyncSearchTool', args)
+        result = await submit_async_search(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Async search submitted:\n{formatted_result}'}]
+    except Exception as e:
+        return log_tool_error('SubmitAsyncSearchTool', e, 'submitting async search', index=args.index)
+
+
+async def get_async_search_tool(args: GetAsyncSearchArgs) -> list[dict]:
+    """Tool to get the status and results of a previously submitted async search.
+
+    Args:
+        args: GetAsyncSearchArgs containing the search_id
+
+    Returns:
+        list[dict]: Async search status/results in MCP format
+    """
+    try:
+        await check_tool_compatibility('GetAsyncSearchTool', args)
+        result = await get_async_search(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Async search results:\n{formatted_result}'}]
+    except Exception as e:
+        return log_tool_error('GetAsyncSearchTool', e, 'getting async search results')
+
+
+async def delete_async_search_tool(args: DeleteAsyncSearchArgs) -> list[dict]:
+    """Tool to delete an async search by ID, freeing cluster resources.
+
+    Args:
+        args: DeleteAsyncSearchArgs containing the search_id
+
+    Returns:
+        list[dict]: Deletion result in MCP format
+    """
+    try:
+        await check_tool_compatibility('DeleteAsyncSearchTool', args)
+        result = await delete_async_search(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Async search {args.search_id} deleted:\n{formatted_result}'}]
+    except Exception as e:
+        return log_tool_error('DeleteAsyncSearchTool', e, 'deleting async search')
+
+
 from .generic_api_tool import GenericOpenSearchApiArgs, generic_opensearch_api_tool
 
 
@@ -1132,6 +1195,42 @@ TOOL_REGISTRY = {
         'args_model': SearchExperimentsArgs,
         'min_version': '3.5.0',
         'http_methods': 'GET, POST',
+    },
+    'SubmitAsyncSearchTool': {
+        'display_name': 'SubmitAsyncSearchTool',
+        'description': (
+            'Submits an asynchronous search request to OpenSearch. Returns a search ID that can be '
+            'used with GetAsyncSearchTool to check status and retrieve results later. Useful for '
+            'long-running or complex queries that may time out with synchronous search. '
+            'PREREQUISITE: You need to know the mappings of the index before constructing queries.'
+        ),
+        'input_schema': SubmitAsyncSearchArgs.model_json_schema(),
+        'function': submit_async_search_tool,
+        'args_model': SubmitAsyncSearchArgs,
+        'min_version': '1.1.0',
+        'http_methods': 'POST',
+    },
+    'GetAsyncSearchTool': {
+        'display_name': 'GetAsyncSearchTool',
+        'description': (
+            'Gets the status and results of a previously submitted async search by its search ID. '
+            'The response includes the search state (RUNNING, SUCCEEDED, FAILED, PERSISTED) and, '
+            'if complete, the search results.'
+        ),
+        'input_schema': GetAsyncSearchArgs.model_json_schema(),
+        'function': get_async_search_tool,
+        'args_model': GetAsyncSearchArgs,
+        'min_version': '1.1.0',
+        'http_methods': 'GET',
+    },
+    'DeleteAsyncSearchTool': {
+        'display_name': 'DeleteAsyncSearchTool',
+        'description': 'Deletes an async search by its search ID, freeing up cluster resources. Use this to clean up completed or no-longer-needed async searches.',
+        'input_schema': DeleteAsyncSearchArgs.model_json_schema(),
+        'function': delete_async_search_tool,
+        'args_model': DeleteAsyncSearchArgs,
+        'min_version': '1.1.0',
+        'http_methods': 'DELETE',
     },
     'GenericOpenSearchApiTool': {
         'display_name': 'GenericOpenSearchApiTool',

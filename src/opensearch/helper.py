@@ -962,6 +962,84 @@ async def delete_judgment_list(args: DeleteJudgmentListArgs) -> json:
         return response
 
 
+async def submit_async_search(args) -> json:
+    """Submit an asynchronous search request to OpenSearch.
+
+    Args:
+        args: SubmitAsyncSearchArgs containing index, query_dsl, and async options
+
+    Returns:
+        json: Response containing the async search ID and initial state
+    """
+    from .client import get_opensearch_client
+    from tools.tools import TOOL_REGISTRY
+
+    if isinstance(args.query_dsl, str):
+        validate_json_string(args.query_dsl)
+
+    async with get_opensearch_client(args) as client:
+        query = normalize_scientific_notation(args.query_dsl)
+
+        # Limit size to maximum of 100
+        tool_info = TOOL_REGISTRY.get('SubmitAsyncSearchTool', {})
+        max_size_limit = tool_info.get('max_size_limit', 100)
+        query['size'] = min(args.size, max_size_limit) if args.size else 10
+
+        params = {}
+        if args.wait_for_completion_timeout:
+            params['wait_for_completion_timeout'] = args.wait_for_completion_timeout
+        if args.keep_on_completion is not None:
+            params['keep_on_completion'] = str(args.keep_on_completion).lower()
+        if args.keep_alive:
+            params['keep_alive'] = args.keep_alive
+
+        response = await client.transport.perform_request(
+            method='POST',
+            url=f'/{args.index}/_plugins/_asynchronous_search',
+            body=json.dumps(query),
+            params=params,
+        )
+        return response
+
+
+async def get_async_search(args) -> json:
+    """Get the status and results of a previously submitted async search.
+
+    Args:
+        args: GetAsyncSearchArgs containing the search_id
+
+    Returns:
+        json: Response containing the async search state and results (if complete)
+    """
+    from .client import get_opensearch_client
+
+    async with get_opensearch_client(args) as client:
+        response = await client.transport.perform_request(
+            method='GET',
+            url=f'/_plugins/_asynchronous_search/{args.search_id}',
+        )
+        return response
+
+
+async def delete_async_search(args) -> json:
+    """Delete an async search by ID, freeing cluster resources.
+
+    Args:
+        args: DeleteAsyncSearchArgs containing the search_id
+
+    Returns:
+        json: Response confirming deletion
+    """
+    from .client import get_opensearch_client
+
+    async with get_opensearch_client(args) as client:
+        response = await client.transport.perform_request(
+            method='DELETE',
+            url=f'/_plugins/_asynchronous_search/{args.search_id}',
+        )
+        return response
+
+
 def validate_json_string(value: str) -> None:
     """Validate that a string is valid JSON, raising ValueError with a concise message if not.
 

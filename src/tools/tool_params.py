@@ -627,3 +627,73 @@ class SearchExperimentsArgs(baseToolArgs):
 
     class Config:
         json_schema_extra = {'examples': _SRW_SEARCH_QUERY_BODY_EXAMPLES}
+
+
+class SubmitAsyncSearchArgs(baseToolArgs):
+    """Arguments for the SubmitAsyncSearchTool."""
+
+    index: str = Field(description='The name of the index to search in')
+    query_dsl: Any = Field(
+        description='The search query in OpenSearch query DSL format. '
+        'Same syntax as SearchIndexTool.'
+    )
+    wait_for_completion_timeout: Optional[str] = Field(
+        default='5s',
+        description='How long to wait for the search to complete before returning a partial response (e.g., "5s", "1m"). Defaults to "5s".',
+    )
+    keep_on_completion: Optional[bool] = Field(
+        default=True,
+        description='Whether to keep the async search result after completion so it can still be retrieved by ID. Defaults to true.',
+    )
+    keep_alive: Optional[str] = Field(
+        default='5m',
+        description='How long to keep the async search context alive for retrieving results later (e.g., "5m", "1h"). Defaults to "5m".',
+    )
+    size: int = Field(
+        default=10,
+        description='Number of search results to return. The maximum allowed value is 100.',
+    )
+
+    class Config:
+        json_schema_extra = {
+            'examples': [
+                {
+                    'index': 'my-index',
+                    'query_dsl': {'query': {'match_all': {}}},
+                },
+                {
+                    'index': 'logs-*',
+                    'query_dsl': {'query': {'range': {'timestamp': {'gte': 'now-1h'}}}},
+                    'wait_for_completion_timeout': '10s',
+                    'keep_on_completion': True,
+                    'keep_alive': '1h',
+                    'size': 50,
+                },
+            ]
+        }
+
+
+class GetAsyncSearchArgs(baseToolArgs):
+    """Arguments for the GetAsyncSearchTool."""
+
+    search_id: str = Field(
+        description='The async search ID returned from SubmitAsyncSearchTool'
+    )
+
+    class Config:
+        json_schema_extra = {
+            'examples': [{'search_id': 'FklfVGlYbkpRVl9FbVlVcDJfRTBhQXc'}]
+        }
+
+
+class DeleteAsyncSearchArgs(baseToolArgs):
+    """Arguments for the DeleteAsyncSearchTool."""
+
+    search_id: str = Field(
+        description='The async search ID to delete and free cluster resources'
+    )
+
+    class Config:
+        json_schema_extra = {
+            'examples': [{'search_id': 'FklfVGlYbkpRVl9FbVlVcDJfRTBhQXc'}]
+        }
