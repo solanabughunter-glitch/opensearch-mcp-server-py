@@ -3,10 +3,56 @@
 Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
+### Added
+- Add `User-Agent` header (`opensearch-mcp-server-py/<version>`) to all OpenSearch requests for MCP traffic identification in cluster logs ([#207](https://github.com/opensearch-project/opensearch-mcp-server-py/issues/207))
 
+### Fixed
+
+### Removed
+
+## [Released 0.9.0]
 ### Added
 
+- Add Search Relevance Workbench tools for query set management (add, get, delete) ([#187](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/187))
+- Add Search Relevance Workbench tools for judgment list management (create, get, delete) ([#190](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/190))
+- Add Search Relevance Workbench tools for experiment management (create, get, delete) ([#192](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/192))
+- Add Search Relevance Workbench `_search` API tools for querying query sets, search configurations, judgments, and experiments using OpenSearch query DSL ([#193](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/193))
+
+### Improved
+
+- Enhanced SearchIndexTool descriptions to improve LLM query construction consistency ([#194](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/194))
+- Added Bearer Authorization support when header authentication is enabled ([#189](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/189))
+- Sanitized write-disabled error message in GenericOpenSearchApiTool to avoid exposing internal configuration details ([#196](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/196))
+
+## [Released 0.8.0]
+### Added
+
+- Optimize JSON output token usage by removing formatting whitespace across all tools ([#167](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/167))
+- Rename SearchIndexTool parameter `query` to `query_dsl` to avoid confusion with nested query objects ([#172](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/172))
+- Add structured JSON logging (`--log-format json`) for monitoring and metrics ([#178](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/178))
+
+### Fixed
+
+- Fix SearchIndexTool `AttributeError` after `query` to `query_dsl` rename ([#176](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/176))
+
+### Dependencies
+
+- Bump `aiohttp` from 3.11.18 to 3.13.3 ([#175](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/175))
+- Bump `mcp` from 1.9.4 to 1.23.0 ([#180](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/180))
+- Bump `starlette` from 0.46.2 to 0.49.1 ([#181](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/181))
+- Bump `h11` from 0.14.0 to 0.16.0 ([#182](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/182))
+- Bump `requests` from 2.32.3 to 2.32.4 ([#183](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/183))
+- Bump `python-multipart` from 0.0.20 to 0.0.22 ([#173](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/173))
+- Bump `urllib3` from 2.4.0 to 2.6.3 ([#174](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/174))
+
+### Removed
+
+## [Released 0.7.0]
+### Added
+
+
 - Support basic auth through header in HTTP transport ([#152](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/152))
+- Add Search Relevance Workbench tools for search configuration management (add, get, delete) ([#171](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/171))
 
 ### Fixed
 - Fix _fallback_perform_request using wrong url ([#157](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/157))

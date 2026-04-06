@@ -1,6 +1,7 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import logging
 import uvicorn
 import contextlib
@@ -26,7 +27,7 @@ async def create_mcp_server(
     mode: str = 'single',
     profile: str = '',
     config_file_path: str = '',
-    cli_tool_overrides: dict = None,
+    cli_tool_overrides: dict | None = None,
 ) -> Server:
     # Set the global mode
     set_mode(mode)
@@ -71,21 +72,9 @@ async def create_mcp_server(
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-        # Find the tool by its display name, which is what the client sees
-        found_tool_key = None
-        for key, tool_info in enabled_tools.items():
-            if tool_info.get('display_name', key) == name:
-                found_tool_key = key
-                break
+        from mcp_server_opensearch.tool_executor import execute_tool
 
-        if not found_tool_key:
-            raise ValueError(f'Unknown or disabled tool: {name}')
-
-        tool = enabled_tools.get(found_tool_key)
-        from tools.tool_params import validate_args_for_mode
-
-        parsed = validate_args_for_mode(arguments, tool['args_model'])
-        return await tool['function'](parsed)
+        return await execute_tool(name, arguments, enabled_tools)
 
     return server
 
@@ -101,7 +90,7 @@ class MCPStarletteApp:
             stateless=stateless,
         )
 
-    async def handle_sse(self, request: Request) -> None:
+    async def handle_sse(self, request: Request) -> Response:
         async with self.sse.connect_sse(
             request.scope,
             request.receive,
@@ -125,11 +114,19 @@ class MCPStarletteApp:
         Context manager for session manager lifecycle.
         Ensures proper startup and shutdown of the session manager.
         """
+        from mcp_server_opensearch.logging_config import start_memory_monitor
+
         async with self.session_manager.run():
             logging.info('Application started with StreamableHTTP session manager!')
+            monitor_task = start_memory_monitor()
             try:
                 yield
             finally:
+                monitor_task.cancel()
+                try:
+                    await monitor_task
+                except (asyncio.CancelledError, Exception):
+                    pass
                 logging.info('Application shutting down...')
 
     async def handle_streamable_http(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -155,7 +152,7 @@ async def serve(
     mode: str = 'single',
     profile: str = '',
     config_file_path: str = '',
-    cli_tool_overrides: dict = None,
+    cli_tool_overrides: dict | None = None,
     stateless: bool = True,
 ) -> None:
     mcp_server = await create_mcp_server(mode, profile, config_file_path, cli_tool_overrides)

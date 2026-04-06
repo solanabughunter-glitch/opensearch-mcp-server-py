@@ -74,14 +74,20 @@ def main() -> None:
         action='store_true',
         help='Enable debug logging',
     )
+    parser.add_argument(
+        '--log-format',
+        choices=['text', 'json'],
+        default='text',
+        help='Log output format: text (default, human-readable) or json (structured)',
+    )
 
     args, unknown = parser.parse_known_args()
 
-    # Configure logging with appropriate level
+    # Configure logging with appropriate level and format
+    from .logging_config import configure_logging
+
     log_level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(
-        level=log_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    configure_logging(level=log_level, log_format=args.log_format)
     logger = logging.getLogger(__name__)
 
     logger.info('Starting MCP server...')

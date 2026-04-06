@@ -61,6 +61,29 @@ The following tools are available but disabled by default. To enable them, see t
 - [GetAllocationTool](https://docs.opensearch.org/latest/api-reference/cat/cat-allocation/): Gets information about shard allocation across nodes in the cluster from the /\_cat/allocation endpoint.
 - [GetLongRunningTasksTool](https://docs.opensearch.org/latest/api-reference/cat/cat-tasks/): Gets information about long-running tasks in the cluster, sorted by running time in descending order.
 
+### Search Relevance Workbench Tools (Disabled by Default)
+Search Relevance Workbench tools are grouped under the `search_relevance` category and can be enabled at once using `OPENSEARCH_ENABLED_CATEGORIES=search_relevance` or by adding `enabled_categories: [search_relevance]` or explicitly adding individual tools to their config file. See the [Tool Filter](USER_GUIDE.md#tool-filter) section in the User Guide for additional information about how to filter tools.
+
+- [CreateSearchConfigurationTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/search-configurations/#creating-search-configurations): Creates a search configuration consisting of a name, a query body (a query in OpenSearch query domain-specific language), and the target index.
+- [GetSearchConfigurationTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/search-configurations/#retrieve-search-configurations): Retrieves a search configuration by ID.
+- [DeleteSearchConfigurationTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/search-configurations/#delete-a-search-configuration): Deletes a search configuration by ID.
+- [CreateQuerySetTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/query-sets/#example-request-uploading-a-query-set-manually): Creates a query set consisting of a name, a description, and a list of queries.
+- [SampleQuerySetTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/query-sets/#creating-query-sets): Samples a query set based on UBI data with different statistical sampling techniques.
+- [GetQuerySetTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/query-sets/#retrieve-query-sets): Retrieves a query set by ID.
+- [DeleteQuerySetTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/query-sets/#delete-a-query-set): Deletes a query set by ID.
+- [CreateJudgmentListTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/judgments/#importing-judgments): Creates a judgment list with judgments originating from an external process.
+- [CreateLLMJudgmentListTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/judgments/#creating-ai-assisted-judgments): Creates a judgment list by using an LLM.
+- [CreateUBIJudgmentListTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/judgments/#implicit-judgments): Creates a judgment list based on implicit feedback (User Behavior Insights data).
+- [GetJudgmentListTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/judgments/): Retrieves a judgment list by ID.
+- [DeleteJudgmentListTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/judgments/): Deletes a judgment list by ID.
+- [CreateExperimentTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/experiments/): Creates a search relevance experiment. Supports PAIRWISE_COMPARISON (compares 2 search configurations), POINTWISE_EVALUATION (evaluates 1 configuration against judgment lists), and HYBRID_OPTIMIZER (optimizes 1 configuration using judgment lists).
+- [GetExperimentTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/experiments/): Retrieves an experiment by ID.
+- [DeleteExperimentTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/experiments/): Deletes an experiment by ID.
+- [SearchQuerySetsTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/query-sets/): Searches query sets using OpenSearch query DSL. Defaults to match_all if no query body is provided.
+- [SearchSearchConfigurationsTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/search-configurations/): Searches search configurations using OpenSearch query DSL. Defaults to match_all if no query body is provided.
+- [SearchJudgmentsTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/judgments/): Searches judgments using OpenSearch query DSL. Defaults to match_all if no query body is provided.
+- [SearchExperimentsTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/experiments/): Searches experiments using OpenSearch query DSL. Defaults to match_all if no query body is provided.
+
 ### Skills Tools (Enabled by Default)
 
 Advanced analysis tools for data analysis and troubleshooting.
@@ -84,7 +107,7 @@ Advanced analysis tools for data analysis and troubleshooting.
 
   - `opensearch_url` (optional): The OpenSearch cluster URL to connect to
   - `index` (required): The name of the index to search in
-  - `query` (required): The search query in OpenSearch Query DSL format
+  - `query_dsl` (required): The search query in OpenSearch Query DSL format
   - `format` (optional): The format of SearchIndexTool response. options are csv and json
   - `size` (optional): The size of SearchIndexTool response. Default is 10, maximum is 100 (configurable). To change the maximum limit, set `max_size_limit` via CLI arguments or config file. See [Tool Customization](USER_GUIDE.md#tool-customization) for details.
 

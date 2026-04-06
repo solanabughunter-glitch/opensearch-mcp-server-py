@@ -7,6 +7,7 @@ import os
 from typing import Any, Dict, Optional
 from urllib.parse import urlencode
 
+from .tool_logging import log_tool_error
 from .tool_params import baseToolArgs
 from pydantic import BaseModel, Field
 
@@ -87,12 +88,11 @@ async def generic_opensearch_api_tool(args: GenericOpenSearchApiArgs) -> list[di
         valid_methods = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'PATCH']
         method = args.method.upper()
         if method not in valid_methods:
-            return [
-                {
-                    'type': 'text',
-                    'text': f'Error: Invalid HTTP method "{args.method}". Valid methods are: {", ".join(valid_methods)}',
-                }
-            ]
+            return log_tool_error(
+                'GenericOpenSearchApiTool',
+                ValueError(f'Invalid HTTP method "{args.method}". Valid methods are: {", ".join(valid_methods)}'),
+                'validating request',
+            )
 
         # Check if write operations are allowed using the global setting
         # Import here to avoid circular import (tool_filter -> tools -> generic_api_tool -> tool_filter)
@@ -102,16 +102,19 @@ async def generic_opensearch_api_tool(args: GenericOpenSearchApiArgs) -> list[di
         write_methods = ['POST', 'PUT', 'DELETE', 'PATCH']
 
         if method in write_methods and not allow_write:
-            return [
-                {
-                    'type': 'text',
-                    'text': f'Error: Write operations are disabled. Method "{method}" is not allowed. Enable write operations by setting OPENSEARCH_SETTINGS_ALLOW_WRITE=true or configuring allow_write: true in your config file.',
-                }
-            ]
+            return log_tool_error(
+                'GenericOpenSearchApiTool',
+                PermissionError(f'Write operations are disabled. Method "{method}" is not allowed.'),
+                'validating request',
+            )
 
         # Validate path
         if not args.path.startswith('/'):
-            return [{'type': 'text', 'text': 'Error: API path must start with "/"'}]
+            return log_tool_error(
+                'GenericOpenSearchApiTool',
+                ValueError('API path must start with "/"'),
+                'validating request',
+            )
 
         # Initialize OpenSearch client with context manager for proper cleanup
         from opensearch.client import get_opensearch_client
@@ -148,7 +151,7 @@ async def generic_opensearch_api_tool(args: GenericOpenSearchApiArgs) -> list[di
                 formatted_response = response
             else:
                 # Most APIs return JSON
-                formatted_response = json.dumps(response, indent=2)
+                formatted_response = json.dumps(response, separators=(',', ':'))
 
             # Create descriptive message
             message = f'OpenSearch API Response ({method} {args.path})'
@@ -158,6 +161,8 @@ async def generic_opensearch_api_tool(args: GenericOpenSearchApiArgs) -> list[di
             return [{'type': 'text', 'text': f'{message}:\n{formatted_response}'}]
 
     except Exception as e:
-        error_message = f'Error calling OpenSearch API ({args.method} {args.path}): {str(e)}'
-        logger.error(error_message)
-        return [{'type': 'text', 'text': error_message}]
+        return log_tool_error(
+            'GenericOpenSearchApiTool', e,
+            f'calling OpenSearch API ({args.method} {args.path})',
+            method=args.method, path=args.path,
+        )

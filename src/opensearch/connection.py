@@ -9,6 +9,8 @@ OpenSearch connection classes with additional features like response size limiti
 """
 
 import logging
+import time
+
 from opensearchpy import AsyncHttpConnection
 
 # Configure logging
@@ -27,6 +29,42 @@ class OpenSearchClientError(Exception):
 class ResponseSizeExceededError(OpenSearchClientError):
     """Exception raised when response size exceeds the configured limit."""
     pass
+
+
+def _log_request_event(
+    method: str,
+    endpoint: str,
+    status_code: int | None,
+    duration_ms: float,
+    status: str,
+    response_size: int | None = None,
+    error: str | None = None,
+) -> None:
+    """Emit a structured log event for OpenSearch HTTP requests."""
+    log_extra: dict[str, object] = {
+        'event_type': 'opensearch_request',
+        'http_method': method,
+        'endpoint': endpoint,
+        'status': status,
+        'duration_ms': duration_ms,
+    }
+    if status_code is not None:
+        log_extra['status_code'] = status_code
+    if response_size is not None:
+        log_extra['response_size'] = response_size
+    if error:
+        log_extra['error'] = error
+
+    if status == 'success':
+        logger.info(
+            f'OpenSearch request: {method} {endpoint} -> {status_code} ({duration_ms}ms)',
+            extra=log_extra,
+        )
+    else:
+        logger.error(
+            f'OpenSearch request failed: {method} {endpoint} -> {status_code} ({duration_ms}ms)',
+            extra=log_extra,
+        )
 
 
 class BufferedAsyncHttpConnection(AsyncHttpConnection):
@@ -50,11 +88,15 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
         super().__init__(*args, **kwargs)
         self.max_response_size = max_response_size
         if max_response_size is not None:
-            logger.debug(f'Initialized BufferedAsyncHttpConnection with max_response_size={max_response_size} bytes')
+            logger.debug(
+                f'Initialized BufferedAsyncHttpConnection with max_response_size={max_response_size} bytes'
+            )
         else:
             logger.debug('Initialized BufferedAsyncHttpConnection with no response size limit')
 
-    async def perform_request(self, method, url, params=None, body=None, timeout=None, ignore=(), headers=None):
+    async def perform_request(
+        self, method, url, params=None, body=None, timeout=None, ignore=(), headers=None
+    ):
         """
         Perform HTTP request with response size limiting.
 
@@ -76,8 +118,10 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
         Raises:
             ResponseSizeExceededError: If response exceeds max_response_size during streaming
         """
-        logger.debug(f'Making size-limited request: {method} {url} (max_size={self.max_response_size})')
-        original_url = url;
+        logger.debug(
+            f'Making size-limited request: {method} {url} (max_size={self.max_response_size})'
+        )
+        original_url = url
         try:
             # Import required modules
             import aiohttp
@@ -95,11 +139,11 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
             if params:
                 query_string = urlencode(params)
             else:
-                query_string = ""
+                query_string = ''
 
             url = self.url_prefix + url
             if query_string:
-                url = f"{url}?{query_string}"
+                url = f'{url}?{query_string}'
             url = self.host + url
 
             timeout_obj = aiohttp.ClientTimeout(
@@ -113,12 +157,10 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
 
             if self.http_compress and body:
                 body = self._gzip_compress(body)
-                req_headers["content-encoding"] = "gzip"
+                req_headers['content-encoding'] = 'gzip'
 
             # Handle authentication (following parent class logic)
-            auth = (
-                self._http_auth if isinstance(self._http_auth, aiohttp.BasicAuth) else None
-            )
+            auth = self._http_auth if isinstance(self._http_auth, aiohttp.BasicAuth) else None
             if callable(self._http_auth):
                 req_headers = {
                     **req_headers,
@@ -137,14 +179,16 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
                 timeout=timeout_obj,
                 fingerprint=self.ssl_assert_fingerprint,
             ) as response:
-
                 # Stream the response with optional size checking
                 chunks = []
                 total_size = 0
 
                 async for chunk in response.content.iter_chunked(8192):
                     # Only check size limit if max_response_size is set
-                    if self.max_response_size is not None and total_size + len(chunk) > self.max_response_size:
+                    if (
+                        self.max_response_size is not None
+                        and total_size + len(chunk) > self.max_response_size
+                    ):
                         duration = self.loop.time() - start
                         self.log_request_fail(
                             method,
@@ -152,16 +196,16 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
                             url_path,
                             orig_body,
                             duration,
-                            exception=f"Response size exceeded {self.max_response_size} bytes"
+                            exception=f'Response size exceeded {self.max_response_size} bytes',
                         )
                         logger.error(
                             f'Response size exceeded limit during streaming: '
                             f'{total_size + len(chunk)} > {self.max_response_size} bytes'
                         )
                         raise ResponseSizeExceededError(
-                            f"Response size exceeded limit of {self.max_response_size} bytes. "
-                            f"Stopped reading at {total_size} bytes to prevent memory exhaustion. "
-                            f"Consider increasing max_response_size or refining your query to return less data."
+                            f'Response size exceeded limit of {self.max_response_size} bytes. '
+                            f'Stopped reading at {total_size} bytes to prevent memory exhaustion. '
+                            f'Consider increasing max_response_size or refining your query to return less data.'
                         )
 
                     chunks.append(chunk)
@@ -178,10 +222,11 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
                 duration = self.loop.time() - start
 
             # Handle warnings (following parent class logic)
-            warning_headers = response.headers.getall("warning", ())
+            warning_headers = response.headers.getall('warning', ())
             self._raise_warnings(warning_headers)
 
             # Handle errors (following parent class logic)
+            duration_ms = round(duration * 1000, 2)
             if not (200 <= response.status < 300) and response.status not in ignore:
                 self.log_request_fail(
                     method,
@@ -192,32 +237,51 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
                     status_code=response.status,
                     response=raw_data,
                 )
+                _log_request_event(
+                    method,
+                    original_url,
+                    response.status,
+                    duration_ms,
+                    'error',
+                    response_size=total_size,
+                )
                 self._raise_error(response.status, raw_data)
 
             # Log success
             self.log_request_success(
                 method, str(url), url_path, orig_body, response.status, raw_data, duration
             )
+            _log_request_event(
+                method,
+                original_url,
+                response.status,
+                duration_ms,
+                'success',
+                response_size=total_size,
+            )
 
-            if self.max_response_size is not None:
-                logger.debug(f'Response size check passed: {total_size} bytes (limit: {self.max_response_size})')
-            else:
-                logger.debug(f'Response received: {total_size} bytes (no size limit)')
             return response.status, response.headers, raw_data
 
         except ResponseSizeExceededError:
             raise
         except Exception as e:
             # For connection errors and other failures, fall back to parent implementation
-            logger.warning(f'Streaming request failed ({type(e).__name__}: {e}), falling back to parent implementation')
-            return await self._fallback_perform_request(method, original_url, params, body, timeout, ignore, headers)
+            logger.warning(
+                f'Streaming request failed ({type(e).__name__}: {e}), falling back to parent implementation'
+            )
+            return await self._fallback_perform_request(
+                method, original_url, params, body, timeout, ignore, headers
+            )
 
-    async def _fallback_perform_request(self, method, url, params=None, body=None, timeout=None, ignore=(), headers=None):
+    async def _fallback_perform_request(
+        self, method, url, params=None, body=None, timeout=None, ignore=(), headers=None
+    ):
         """
         Fallback to parent implementation with post-download size checking.
 
         This is used when streaming is not available or fails.
         """
+        fallback_start = time.monotonic()
         try:
             # Use parent implementation for the actual request (preserves auth)
             status, response_headers, response_data = await super().perform_request(
@@ -238,19 +302,35 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
                     f'Response size exceeded limit: {data_size} > {self.max_response_size} bytes'
                 )
                 raise ResponseSizeExceededError(
-                    f"Response size exceeded limit of {self.max_response_size} bytes. "
-                    f"Received {data_size} bytes. "
-                    f"Consider increasing max_response_size or refining your query to return less data."
+                    f'Response size exceeded limit of {self.max_response_size} bytes. '
+                    f'Received {data_size} bytes. '
+                    f'Consider increasing max_response_size or refining your query to return less data.'
                 )
 
-            if self.max_response_size is not None:
-                logger.debug(f'Response size check passed: {data_size} bytes (limit: {self.max_response_size})')
-            else:
-                logger.debug(f'Response received: {data_size} bytes (no size limit)')
+            fallback_duration_ms = round((time.monotonic() - fallback_start) * 1000, 2)
+            _log_request_event(
+                method,
+                url,
+                status,
+                fallback_duration_ms,
+                'success',
+                response_size=data_size,
+            )
+
             return status, response_headers, response_data
 
         except ResponseSizeExceededError:
             raise
         except Exception as e:
-            logger.error(f'Error in fallback size-limited request: {e}')
+            fallback_duration_ms = round((time.monotonic() - fallback_start) * 1000, 2)
+            raw_status = getattr(e, 'status_code', None)
+            exc_status_code = raw_status if isinstance(raw_status, int) else None
+            _log_request_event(
+                method,
+                url,
+                exc_status_code,
+                fallback_duration_ms,
+                'error',
+                error=str(e),
+            )
             raise

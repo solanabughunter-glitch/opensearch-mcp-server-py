@@ -27,6 +27,17 @@ class TestTools:
         self.mock_client.indices.stats = AsyncMock(return_value={})
         self.mock_client.transport.perform_request = AsyncMock(return_value={})
         self.mock_client.info = AsyncMock(return_value={'version': {'number': '2.19.0'}})
+        self.mock_client.plugins = Mock()
+        self.mock_client.plugins.search_relevance = Mock()
+        self.mock_client.plugins.search_relevance.put_search_configurations = AsyncMock(
+            return_value={}
+        )
+        self.mock_client.plugins.search_relevance.get_search_configurations = AsyncMock(
+            return_value={}
+        )
+        self.mock_client.plugins.search_relevance.delete_search_configurations = AsyncMock(
+            return_value={}
+        )
 
         # Patch initialize_client to always return our mock client
         self.init_client_patcher = patch(
@@ -61,6 +72,9 @@ class TestTools:
             GetNodesHotThreadsArgs,
             GetAllocationArgs,
             GetLongRunningTasksArgs,
+            CreateSearchConfigurationArgs,
+            GetSearchConfigurationArgs,
+            DeleteSearchConfigurationArgs,
             get_index_mapping_tool,
             get_shards_tool,
             list_indices_tool,
@@ -75,6 +89,9 @@ class TestTools:
             get_nodes_hot_threads_tool,
             get_allocation_tool,
             get_long_running_tasks_tool,
+            create_search_configuration_tool,
+            get_search_configuration_tool,
+            delete_search_configuration_tool,
         )
 
         self.ListIndicesArgs = ListIndicesArgs
@@ -106,6 +123,12 @@ class TestTools:
         self._get_nodes_hot_threads_tool = get_nodes_hot_threads_tool
         self._get_allocation_tool = get_allocation_tool
         self._get_long_running_tasks_tool = get_long_running_tasks_tool
+        self.CreateSearchConfigurationArgs = CreateSearchConfigurationArgs
+        self.GetSearchConfigurationArgs = GetSearchConfigurationArgs
+        self.DeleteSearchConfigurationArgs = DeleteSearchConfigurationArgs
+        self._create_search_configuration_tool = create_search_configuration_tool
+        self._get_search_configuration_tool = get_search_configuration_tool
+        self._delete_search_configuration_tool = delete_search_configuration_tool
 
     def teardown_method(self):
         """Cleanup after each test method."""
@@ -147,10 +170,10 @@ class TestTools:
         assert len(result) == 1
         assert result[0]['type'] == 'text'
         # Should include the full JSON output by default
-        assert '"index": "index1"' in result[0]['text']
-        assert '"docs.count": "100"' in result[0]['text']
-        assert '"index": "index2"' in result[0]['text']
-        assert '"docs.count": "200"' in result[0]['text']
+        assert '"index":"index1"' in result[0]['text']
+        assert '"docs.count":"100"' in result[0]['text']
+        assert '"index":"index2"' in result[0]['text']
+        assert '"docs.count":"200"' in result[0]['text']
         self.mock_client.cat.indices.assert_called_once_with(index=None, format='json')
 
     @pytest.mark.asyncio
@@ -215,10 +238,10 @@ class TestTools:
         assert result[0]['type'] == 'text'
         assert 'Index information for index1' in result[0]['text']
         assert '"index1"' in result[0]['text']
-        assert '"number_of_shards": "1"' in result[0]['text']
+        assert '"number_of_shards":"1"' in result[0]['text']
         assert (
-            '"field1": {"type": "text"}' in result[0]['text']
-            or '"type": "text"' in result[0]['text']
+            '"field1":{"type":"text"}' in result[0]['text']
+            or '"type":"text"' in result[0]['text']
         )
         self.mock_client.indices.get.assert_called_once_with(index='index1')
 
@@ -298,7 +321,7 @@ class TestTools:
         self.mock_client.search.return_value = mock_results
         # Execute
         args = self.SearchIndexArgs(
-            index='test-index', query={'match_all': {}}, opensearch_cluster_name=''
+            index='test-index', query_dsl={'match_all': {}}, opensearch_cluster_name=''
         )
         result = await self._search_index_tool(args)
         # Assert
@@ -318,7 +341,7 @@ class TestTools:
         self.mock_client.search.side_effect = Exception('Test error')
         # Execute
         args = self.SearchIndexArgs(
-            index='test-index', query={'match_all': {}}, opensearch_cluster_name=''
+            index='test-index', query_dsl={'match_all': {}}, opensearch_cluster_name=''
         )
         result = await self._search_index_tool(args)
         # Assert
@@ -403,8 +426,8 @@ class TestTools:
         assert len(result) == 1
         assert result[0]['type'] == 'text'
         assert 'Cluster state information' in result[0]['text']
-        assert '"cluster_name": "test-cluster"' in result[0]['text']
-        assert '"master_node": "node1"' in result[0]['text']
+        assert '"cluster_name":"test-cluster"' in result[0]['text']
+        assert '"master_node":"node1"' in result[0]['text']
         self.mock_client.cluster.state.assert_called_once_with()
 
     @pytest.mark.asyncio
@@ -431,7 +454,7 @@ class TestTools:
         assert len(result) == 1
         assert result[0]['type'] == 'text'
         assert 'Cluster state information for metric: nodes' in result[0]['text']
-        assert '"cluster_name": "test-cluster"' in result[0]['text']
+        assert '"cluster_name":"test-cluster"' in result[0]['text']
         assert '"nodes"' in result[0]['text']
         self.mock_client.cluster.state.assert_called_once_with(metric='nodes')
 
@@ -666,10 +689,10 @@ class TestTools:
         assert 'Detailed information for index: test-index' in result[0]['text']
         assert '"test-index"' in result[0]['text']
         assert (
-            '"field1": {"type": "text"}' in result[0]['text']
-            or '"type": "text"' in result[0]['text']
+            '"field1":{"type":"text"}' in result[0]['text']
+            or '"type":"text"' in result[0]['text']
         )
-        assert '"number_of_shards": "1"' in result[0]['text']
+        assert '"number_of_shards":"1"' in result[0]['text']
         self.mock_client.indices.get.assert_called_once_with(index='test-index')
 
     @pytest.mark.asyncio
@@ -725,8 +748,8 @@ class TestTools:
         assert result[0]['type'] == 'text'
         assert 'Statistics for index: test-index' in result[0]['text']
         assert (
-            '"docs": {"count": 1000, "deleted": 10}' in result[0]['text']
-            or '"count": 1000' in result[0]['text']
+            '"docs":{"count":1000,"deleted":10}' in result[0]['text']
+            or '"count":1000' in result[0]['text']
         )
         self.mock_client.indices.stats.assert_called_once_with(index='test-index')
 
@@ -759,8 +782,8 @@ class TestTools:
         assert result[0]['type'] == 'text'
         assert 'Statistics for index: test-index (metrics: search)' in result[0]['text']
         assert (
-            '"search": {"query_total": 200' in result[0]['text']
-            or '"query_total": 200' in result[0]['text']
+            '"search":{"query_total":200' in result[0]['text']
+            or '"query_total":200' in result[0]['text']
         )
         self.mock_client.indices.stats.assert_called_once_with(index='test-index', metric='search')
 
@@ -811,10 +834,10 @@ class TestTools:
         assert result[0]['type'] == 'text'
         assert 'Query insights from /_insights/top_queries endpoint' in result[0]['text']
         assert (
-            '"query": {"match": {"field": "value"}}' in result[0]['text']
+            '"query":{"match":{"field":"value"}}' in result[0]['text']
             or '"match"' in result[0]['text']
         )
-        assert '"count": 100' in result[0]['text']
+        assert '"count":100' in result[0]['text']
         self.mock_client.transport.perform_request.assert_called_once_with(
             method='GET', url='/_insights/top_queries'
         )
@@ -1092,9 +1115,9 @@ class TestTools:
         assert len(result) == 1
         assert result[0]['type'] == 'text'
         assert 'Detailed node information for all nodes' in result[0]['text']
-        assert '"name": "node-1"' in result[0]['text']
-        assert '"name": "node-2"' in result[0]['text']
-        assert '"cluster_name": "test-cluster"' in result[0]['text']
+        assert '"name":"node-1"' in result[0]['text']
+        assert '"name":"node-2"' in result[0]['text']
+        assert '"cluster_name":"test-cluster"' in result[0]['text']
         self.mock_client.transport.perform_request.assert_called_once_with(
             method='GET', url='/_nodes'
         )
@@ -1135,7 +1158,7 @@ class TestTools:
         assert result[0]['type'] == 'text'
         assert 'Detailed node information for nodes: master:true' in result[0]['text']
         assert '(metrics: process,transport)' in result[0]['text']
-        assert '"name": "master-node"' in result[0]['text']
+        assert '"name":"master-node"' in result[0]['text']
         self.mock_client.transport.perform_request.assert_called_once_with(
             method='GET', url='/_nodes/master:true/process,transport'
         )
@@ -1158,6 +1181,133 @@ class TestTools:
             method='GET', url='/_nodes'
         )
 
+    @pytest.mark.asyncio
+    async def test_create_search_configuration_tool(self):
+        """Test create_search_configuration_tool successful."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        mock_response = {'_id': 'cfg-1', 'result': 'created'}
+        self.mock_client.plugins.search_relevance.put_search_configurations.return_value = (
+            mock_response
+        )
+
+        args = self.CreateSearchConfigurationArgs(
+            name='my-config',
+            index='my-index',
+            query='{"query":{"match":{"title":"%SearchText%"}}}',
+            opensearch_cluster_name='',
+        )
+        result = await self._create_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Search configuration created' in result[0]['text']
+        assert '"_id":"cfg-1"' in result[0]['text']
+        self.mock_client.plugins.search_relevance.put_search_configurations.assert_called_once_with(
+            body={
+                'name': 'my-config',
+                'index': 'my-index',
+                'query': '{"query":{"match":{"title":"%SearchText%"}}}',
+            }
+        )
+
+    @pytest.mark.asyncio
+    async def test_create_search_configuration_tool_error(self):
+        """Test create_search_configuration_tool exception handling."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        self.mock_client.plugins.search_relevance.put_search_configurations.side_effect = (
+            Exception('Test error')
+        )
+
+        args = self.CreateSearchConfigurationArgs(
+            name='my-config',
+            index='my-index',
+            query='{"query":{"match_all":{}}}',
+            opensearch_cluster_name='',
+        )
+        result = await self._create_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Error creating search configuration: Test error' in result[0]['text']
+
+    @pytest.mark.asyncio
+    async def test_get_search_configuration_tool(self):
+        """Test get_search_configuration_tool successful."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        mock_response = {'_id': 'cfg-1', '_source': {'name': 'my-config', 'index': 'my-index'}}
+        self.mock_client.plugins.search_relevance.get_search_configurations.return_value = (
+            mock_response
+        )
+
+        args = self.GetSearchConfigurationArgs(
+            search_configuration_id='cfg-1', opensearch_cluster_name=''
+        )
+        result = await self._get_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Search configuration cfg-1' in result[0]['text']
+        assert '"_id":"cfg-1"' in result[0]['text']
+        self.mock_client.plugins.search_relevance.get_search_configurations.assert_called_once_with(
+            search_configuration_id='cfg-1'
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_search_configuration_tool_error(self):
+        """Test get_search_configuration_tool exception handling."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        self.mock_client.plugins.search_relevance.get_search_configurations.side_effect = (
+            Exception('Not found')
+        )
+
+        args = self.GetSearchConfigurationArgs(
+            search_configuration_id='cfg-1', opensearch_cluster_name=''
+        )
+        result = await self._get_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Error retrieving search configuration: Not found' in result[0]['text']
+
+    @pytest.mark.asyncio
+    async def test_delete_search_configuration_tool(self):
+        """Test delete_search_configuration_tool successful."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        mock_response = {'result': 'deleted'}
+        self.mock_client.plugins.search_relevance.delete_search_configurations.return_value = (
+            mock_response
+        )
+
+        args = self.DeleteSearchConfigurationArgs(
+            search_configuration_id='cfg-1', opensearch_cluster_name=''
+        )
+        result = await self._delete_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Search configuration cfg-1 deleted' in result[0]['text']
+        assert '"result":"deleted"' in result[0]['text']
+        self.mock_client.plugins.search_relevance.delete_search_configurations.assert_called_once_with(
+            search_configuration_id='cfg-1'
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_search_configuration_tool_error(self):
+        """Test delete_search_configuration_tool exception handling."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        self.mock_client.plugins.search_relevance.delete_search_configurations.side_effect = (
+            Exception('Test error')
+        )
+
+        args = self.DeleteSearchConfigurationArgs(
+            search_configuration_id='cfg-1', opensearch_cluster_name=''
+        )
+        result = await self._delete_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Error deleting search configuration: Test error' in result[0]['text']
+
     def test_tool_registry(self):
         """Test TOOL_REGISTRY structure."""
         expected_tools = [
@@ -1175,6 +1325,9 @@ class TestTools:
             'GetNodesHotThreadsTool',
             'GetAllocationTool',
             'GetLongRunningTasksTool',
+            'CreateSearchConfigurationTool',
+            'GetSearchConfigurationTool',
+            'DeleteSearchConfigurationTool',
         ]
 
         for tool in expected_tools:
@@ -1198,7 +1351,7 @@ class TestTools:
         assert self.GetIndexMappingArgs(index='test', opensearch_cluster_name='').index == 'test'
         assert (
             self.SearchIndexArgs(
-                index='test', query={'match': {}}, opensearch_cluster_name=''
+                index='test', query_dsl={'match': {}}, opensearch_cluster_name=''
             ).index
             == 'test'
         )

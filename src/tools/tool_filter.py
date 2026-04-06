@@ -184,6 +184,39 @@ def process_tool_filter(
         # Add core_tools as a built-in category using display name
         category_to_tools['core_tools'] = core_tools_display_name
 
+        # Initialize search_relevance tool names
+        search_relevance_tools = [
+            'CreateSearchConfigurationTool',
+            'GetSearchConfigurationTool',
+            'DeleteSearchConfigurationTool',
+            'GetQuerySetTool',
+            'CreateQuerySetTool',
+            'SampleQuerySetTool',
+            'DeleteQuerySetTool',
+            'GetJudgmentListTool',
+            'CreateJudgmentListTool',
+            'CreateUBIJudgmentListTool',
+            'CreateLLMJudgmentListTool',
+            'DeleteJudgmentListTool',
+            'GetExperimentTool',
+            'CreateExperimentTool',
+            'DeleteExperimentTool',
+            'SearchQuerySetsTool',
+            'SearchSearchConfigurationsTool',
+            'SearchJudgmentsTool',
+            'SearchExperimentsTool',
+        ]
+
+        # Build search_relevance tools list using display names
+        search_relevance_display_names = []
+        for tool_name in search_relevance_tools:
+            if tool_name in tool_registry:
+                tool_display_name = tool_registry[tool_name].get('display_name', tool_name)
+                search_relevance_display_names.append(tool_display_name)
+
+        # Add search_relevance as a built-in category (not enabled by default)
+        category_to_tools['search_relevance'] = search_relevance_display_names
+
         # Process YAML config file if provided
         config = load_yaml_config(filter_path)
         if config:

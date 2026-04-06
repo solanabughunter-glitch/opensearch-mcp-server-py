@@ -11,6 +11,7 @@
 - [Running the Server](#running-the-server)
 - [Tool Filter](#tool-filter)
 - [Tool Customization](#tool-customization)
+- [Structured Logging](#structured-logging)
 - [LangChain Integration](#langchain-integration)
 
 ## Overview
@@ -200,7 +201,7 @@ The LLM needs to have context about the available cluster names to make informed
 {
   "opensearch_cluster_name": "production",
   "index": "users",
-  "query": {
+  "query_dsl": {
     "match": {
       "status": "active"
     }
@@ -255,6 +256,10 @@ For Basic authentication:
 
 - `Authorization`: HTTP Basic authentication header (format: `Basic <base64(username:password)>`)
   - Example: `Authorization: Basic YWRtaW46cGFzc3dvcmQ=` (where `YWRtaW46cGFzc3dvcmQ=` is base64-encoded `admin:password`)
+
+For Bearer authentication:
+
+- `Authorization`: HTTP Bearer authentication header (format: `Bearer <token>`)
 
 **Note:** When `OPENSEARCH_HEADER_AUTH=true` (single mode) or `opensearch_header_auth: true` (multi mode), headers take priority over environment variables or cluster configuration values. If a header is not provided, the system falls back to the corresponding environment variable (single mode) or cluster configuration value (multi mode).
 
@@ -422,6 +427,7 @@ python -m mcp_server_opensearch --mode multi
 | `--mode` | string | `single` | Server mode: `single` or `multi` |
 | `--profile` | string | `''` | AWS profile to use for OpenSearch connection |
 | `--config` | string | `''` | Path to a YAML configuration file |
+| `--log-format` | string | `text` | Log output format: `text` (human-readable) or `json` (structured) |
 
 ## Environment Variables
 
@@ -467,6 +473,12 @@ python -m mcp_server_opensearch --mode multi
 | `OPENSEARCH_ENABLED_TOOLS_REGEX` | No | `''` | Comma-separated list of regex patterns for enabled tools |
 | `OPENSEARCH_DISABLED_TOOLS_REGEX` | No | `''` | Comma-separated list of regex patterns for disabled tools |
 | `OPENSEARCH_SETTINGS_ALLOW_WRITE` | No | `"true"` | Enable/disable write operations (`"true"` or `"false"`) |
+
+### Logging & Monitoring Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `OPENSEARCH_MEMORY_MONITOR_INTERVAL` | No | `60` | Interval in seconds between memory usage snapshots (only active with `--log-format json`) |
 
 *Required in single mode or when not using multi-mode config file
 
@@ -678,6 +690,102 @@ When the response size limit is exceeded, you'll see an error like:
 ```
 Response size exceeded limit of 10485760 bytes. Stopped reading at 15728640 bytes to prevent memory exhaustion. Consider increasing max_response_size or refining your query to return less data.
 ```
+
+## Structured Logging
+
+The OpenSearch MCP server supports structured JSON logging for monitoring and metrics. When enabled, every log line is a JSON object with fields that can be directly targeted by metric filters in log aggregation platforms such as Amazon CloudWatch, Datadog, Splunk, Grafana Loki, or the ELK stack.
+
+### Enabling Structured Logging
+
+Use the `--log-format json` flag when starting the server:
+
+```bash
+# Stdio server with JSON logging
+python -m mcp_server_opensearch --log-format json
+
+# Streaming server with JSON logging
+python -m mcp_server_opensearch --transport stream --log-format json
+
+# Capture logs to a file for analysis
+python -m mcp_server_opensearch --log-format json 2>server.jsonl
+```
+
+The default (`--log-format text`) produces the same human-readable output as before and is fully backward-compatible.
+
+### Event Types
+
+The server emits the following structured event types:
+
+| Event Type | When Emitted | Key Fields |
+|-----------|-------------|------------|
+| `tool_execution` | Every tool invocation | `tool_name`, `status`, `duration_ms` |
+| `tool_error` | Tool failure | `tool_name`, `status_code`, `exception_type`, `root_cause` |
+| `opensearch_request` | Every HTTP request to OpenSearch | `http_method`, `endpoint`, `status_code`, `duration_ms` |
+| `datasource_connection` | Auth/connection failure | `auth_method`, `datasource_type`, `opensearch_url` |
+| `memory_snapshot` | Periodically (default: every 60s) | `memory_rss_mb`, `pid` |
+
+### Example Log Events
+
+**Successful tool execution:**
+```json
+{
+  "timestamp": "2026-02-27T19:50:45.687Z",
+  "level": "INFO",
+  "logger": "mcp_server_opensearch.tool_executor",
+  "message": "Tool executed: ListIndexTool (711.81ms)",
+  "event_type": "tool_execution",
+  "tool_name": "ListIndexTool",
+  "status": "success",
+  "duration_ms": 711.81,
+  "tool_key": "ListIndexTool"
+}
+```
+
+**Tool error with root cause:**
+```json
+{
+  "timestamp": "2026-02-27T21:02:02.095Z",
+  "level": "ERROR",
+  "logger": "tools.tool_logging",
+  "message": "Tool error: CountTool - executing CountTool (NotFoundError)",
+  "event_type": "tool_error",
+  "tool_name": "CountTool",
+  "exception_type": "NotFoundError",
+  "status": "error",
+  "status_code": 404,
+  "root_cause": "index_not_found_exception"
+}
+```
+
+### Filtering Log Events
+
+Use `jq` to filter structured events from the log file:
+
+```bash
+# Show all structured events
+cat server.jsonl | jq 'select(.event_type)'
+
+# Show only tool errors
+cat server.jsonl | jq 'select(.event_type == "tool_error")'
+
+# Show failed tool executions
+cat server.jsonl | jq 'select(.event_type == "tool_execution" and .status == "error")'
+
+# Show 403 errors
+cat server.jsonl | jq 'select(.status_code == 403)'
+```
+
+### Memory Monitor
+
+When structured logging is enabled, the server periodically logs process memory usage as `memory_snapshot` events. The interval can be configured via the `OPENSEARCH_MEMORY_MONITOR_INTERVAL` environment variable (default: 60 seconds).
+
+```bash
+# Set memory snapshot interval to 30 seconds
+export OPENSEARCH_MEMORY_MONITOR_INTERVAL=30
+python -m mcp_server_opensearch --log-format json
+```
+
+For a complete RFC with detailed field references, metric filter patterns, and integration test results, see [RFC: Structured JSON Logging for Monitoring and Metrics](https://github.com/opensearch-project/opensearch-mcp-server-py/issues/177).
 
 ## LangChain Integration
 

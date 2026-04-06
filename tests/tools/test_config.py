@@ -203,7 +203,7 @@ def test_parse_cli_to_nested_config_top_level_and_args():
         'tool.ListIndexTool.customTag': 'analytics',  # should be ignored (non-standard)
         'tool.ListIndexTool.args.index.required': 'true',
         'tool.ListIndexTool.args.index.default': 'my-index',
-        'tool.SearchIndexTool.args.query.default': '{"match_all": {}}',
+        'tool.SearchIndexTool.args.query_dsl.default': '{"match_all": {}}',
         'invalid.no_prefix': 'ignored',
         'tool.Bad': 'ignored',  # missing fieldPath
     }
@@ -217,7 +217,7 @@ def test_parse_cli_to_nested_config_top_level_and_args():
     assert nested['ListIndexTool']['args']['index']['default'] == 'my-index'
 
     assert 'SearchIndexTool' in nested
-    assert nested['SearchIndexTool']['args']['query']['default'] == {'match_all': {}}
+    assert nested['SearchIndexTool']['args']['query_dsl']['default'] == {'match_all': {}}
 
     # invalid keys should not create entries
     assert 'Bad' not in nested

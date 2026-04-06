@@ -6,6 +6,7 @@ import json
 import yaml
 import ssl
 import os
+from .tool_logging import log_tool_error
 from .tool_params import baseToolArgs
 from .tools import TOOL_REGISTRY, check_tool_compatibility
 from mcp.types import TextContent
@@ -224,10 +225,9 @@ def generate_tool_from_group(base_name: str, endpoints: List[Dict]) -> Dict[str,
 
     # Create the tool function that will execute the OpenSearch API
     async def tool_func(params: BaseModel) -> list[TextContent]:
+        tool_name = f'{base_name.replace("_", "")}Tool'
         try:
             from opensearch.client import get_opensearch_client
-
-            tool_name = f'{base_name.replace("_", "")}Tool'
             params_dict = params.model_dump() if hasattr(params, 'model_dump') else {}
 
             try:
@@ -243,11 +243,7 @@ def generate_tool_from_group(base_name: str, endpoints: List[Dict]) -> Dict[str,
 
                 args = baseToolArgs(**base_args)
             except Exception as e:
-                return [
-                    TextContent(
-                        type='text', text=f'Error initializing OpenSearch client: {str(e)}'
-                    )
-                ]
+                return log_tool_error(tool_name, e, 'initializing OpenSearch client')
 
             # Use context manager to ensure proper client cleanup
             async with get_opensearch_client(args) as request_client:
@@ -280,7 +276,7 @@ def generate_tool_from_group(base_name: str, endpoints: List[Dict]) -> Dict[str,
                 ]
 
         except Exception as e:
-            return [TextContent(type='text', text=f'Error: {str(e)}')]
+            return log_tool_error(tool_name, e, f'executing {tool_name}')
 
     # Create input schema with required fields
     input_schema = {'type': 'object', 'title': f'{base_name}Args', 'properties': all_parameters}

@@ -418,6 +418,135 @@ class TestProcessToolFilter:
         assert 'ClusterHealthTool' not in self.tool_registry
         assert 'ExplainTool' not in self.tool_registry
 
+    def test_search_relevance_category_is_not_enabled_by_default(self):
+        """search_relevance tools are not enabled unless the category is explicitly enabled."""
+        registry = {
+            'ListIndexTool': {'display_name': 'ListIndexTool', 'http_methods': 'GET'},
+            'CreateSearchConfigurationTool': {
+                'display_name': 'CreateSearchConfigurationTool',
+                'http_methods': 'PUT',
+            },
+            'GetSearchConfigurationTool': {
+                'display_name': 'GetSearchConfigurationTool',
+                'http_methods': 'GET',
+            },
+            'DeleteSearchConfigurationTool': {
+                'display_name': 'DeleteSearchConfigurationTool',
+                'http_methods': 'DELETE',
+            },
+            'GetQuerySetTool': {'display_name': 'GetQuerySetTool', 'http_methods': 'GET'},
+            'CreateQuerySetTool': {'display_name': 'CreateQuerySetTool', 'http_methods': 'PUT'},
+            'SampleQuerySetTool': {'display_name': 'SampleQuerySetTool', 'http_methods': 'POST'},
+            'DeleteQuerySetTool': {'display_name': 'DeleteQuerySetTool', 'http_methods': 'DELETE'},
+            'GetJudgmentListTool': {'display_name': 'GetJudgmentListTool', 'http_methods': 'GET'},
+            'CreateJudgmentListTool': {'display_name': 'CreateJudgmentListTool', 'http_methods': 'PUT'},
+            'CreateUBIJudgmentListTool': {
+                'display_name': 'CreateUBIJudgmentListTool',
+                'http_methods': 'PUT',
+            },
+            'CreateLLMJudgmentListTool': {
+                'display_name': 'CreateLLMJudgmentListTool',
+                'http_methods': 'PUT',
+            },
+            'DeleteJudgmentListTool': {'display_name': 'DeleteJudgmentListTool', 'http_methods': 'DELETE'},
+            'GetExperimentTool': {'display_name': 'GetExperimentTool', 'http_methods': 'GET'},
+            'CreateExperimentTool': {'display_name': 'CreateExperimentTool', 'http_methods': 'PUT'},
+            'DeleteExperimentTool': {'display_name': 'DeleteExperimentTool', 'http_methods': 'DELETE'},
+            'SearchQuerySetsTool': {'display_name': 'SearchQuerySetsTool', 'http_methods': 'GET, POST'},
+            'SearchSearchConfigurationsTool': {'display_name': 'SearchSearchConfigurationsTool', 'http_methods': 'GET, POST'},
+            'SearchJudgmentsTool': {'display_name': 'SearchJudgmentsTool', 'http_methods': 'GET, POST'},
+            'SearchExperimentsTool': {'display_name': 'SearchExperimentsTool', 'http_methods': 'GET, POST'},
+        }
+        process_tool_filter(tool_registry=registry, allow_write=True)
+
+        # core_tools are enabled by default, search_relevance tools are not
+        assert 'ListIndexTool' in registry
+        assert 'CreateSearchConfigurationTool' not in registry
+        assert 'GetSearchConfigurationTool' not in registry
+        assert 'DeleteSearchConfigurationTool' not in registry
+        assert 'GetQuerySetTool' not in registry
+        assert 'CreateQuerySetTool' not in registry
+        assert 'SampleQuerySetTool' not in registry
+        assert 'DeleteQuerySetTool' not in registry
+        assert 'GetJudgmentListTool' not in registry
+        assert 'CreateJudgmentListTool' not in registry
+        assert 'CreateUBIJudgmentListTool' not in registry
+        assert 'CreateLLMJudgmentListTool' not in registry
+        assert 'DeleteJudgmentListTool' not in registry
+        assert 'GetExperimentTool' not in registry
+        assert 'CreateExperimentTool' not in registry
+        assert 'DeleteExperimentTool' not in registry
+        assert 'SearchQuerySetsTool' not in registry
+        assert 'SearchSearchConfigurationsTool' not in registry
+        assert 'SearchJudgmentsTool' not in registry
+        assert 'SearchExperimentsTool' not in registry
+
+    def test_search_relevance_category_can_be_enabled(self):
+        """search_relevance tools are exposed when the category is explicitly enabled."""
+        registry = {
+            'ListIndexTool': {'display_name': 'ListIndexTool', 'http_methods': 'GET'},
+            'CreateSearchConfigurationTool': {
+                'display_name': 'CreateSearchConfigurationTool',
+                'http_methods': 'PUT',
+            },
+            'GetSearchConfigurationTool': {
+                'display_name': 'GetSearchConfigurationTool',
+                'http_methods': 'GET',
+            },
+            'DeleteSearchConfigurationTool': {
+                'display_name': 'DeleteSearchConfigurationTool',
+                'http_methods': 'DELETE',
+            },
+            'GetQuerySetTool': {'display_name': 'GetQuerySetTool', 'http_methods': 'GET'},
+            'CreateQuerySetTool': {'display_name': 'CreateQuerySetTool', 'http_methods': 'PUT'},
+            'SampleQuerySetTool': {'display_name': 'SampleQuerySetTool', 'http_methods': 'POST'},
+            'DeleteQuerySetTool': {'display_name': 'DeleteQuerySetTool', 'http_methods': 'DELETE'},
+            'GetJudgmentListTool': {'display_name': 'GetJudgmentListTool', 'http_methods': 'GET'},
+            'CreateJudgmentListTool': {'display_name': 'CreateJudgmentListTool', 'http_methods': 'PUT'},
+            'CreateUBIJudgmentListTool': {
+                'display_name': 'CreateUBIJudgmentListTool',
+                'http_methods': 'PUT',
+            },
+            'CreateLLMJudgmentListTool': {
+                'display_name': 'CreateLLMJudgmentListTool',
+                'http_methods': 'PUT',
+            },
+            'DeleteJudgmentListTool': {'display_name': 'DeleteJudgmentListTool', 'http_methods': 'DELETE'},
+            'GetExperimentTool': {'display_name': 'GetExperimentTool', 'http_methods': 'GET'},
+            'CreateExperimentTool': {'display_name': 'CreateExperimentTool', 'http_methods': 'PUT'},
+            'DeleteExperimentTool': {'display_name': 'DeleteExperimentTool', 'http_methods': 'DELETE'},
+            'SearchQuerySetsTool': {'display_name': 'SearchQuerySetsTool', 'http_methods': 'GET, POST'},
+            'SearchSearchConfigurationsTool': {'display_name': 'SearchSearchConfigurationsTool', 'http_methods': 'GET, POST'},
+            'SearchJudgmentsTool': {'display_name': 'SearchJudgmentsTool', 'http_methods': 'GET, POST'},
+            'SearchExperimentsTool': {'display_name': 'SearchExperimentsTool', 'http_methods': 'GET, POST'},
+        }
+        process_tool_filter(
+            tool_registry=registry,
+            enabled_categories='core_tools,search_relevance',
+            allow_write=True,
+        )
+
+        assert 'ListIndexTool' in registry
+        assert 'CreateSearchConfigurationTool' in registry
+        assert 'GetSearchConfigurationTool' in registry
+        assert 'DeleteSearchConfigurationTool' in registry
+        assert 'GetQuerySetTool' in registry
+        assert 'CreateQuerySetTool' in registry
+        assert 'SampleQuerySetTool' in registry
+        assert 'DeleteQuerySetTool' in registry
+        assert 'GetJudgmentListTool' in registry
+        assert 'CreateJudgmentListTool' in registry
+        assert 'CreateUBIJudgmentListTool' in registry
+        assert 'CreateLLMJudgmentListTool' in registry
+        assert 'DeleteJudgmentListTool' in registry
+        assert 'GetExperimentTool' in registry
+        assert 'CreateExperimentTool' in registry
+        assert 'DeleteExperimentTool' in registry
+        assert 'SearchQuerySetsTool' in registry
+        assert 'SearchSearchConfigurationsTool' in registry
+        assert 'SearchJudgmentsTool' in registry
+        assert 'SearchExperimentsTool' in registry
+
 
 class TestAllowWriteSettings:
     """Test cases for the allow_write setting functionality."""
