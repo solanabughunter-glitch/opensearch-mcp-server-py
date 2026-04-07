@@ -465,8 +465,6 @@ For Kubernetes deployments, run the server in streaming mode behind a `Service` 
 4. Expose the pod through a `Service`.
 5. Publish `/mcp` and `/health` through an `Ingress`.
 
-See [deploy/k8s/mcp-server.example.yaml](./deploy/k8s/mcp-server.example.yaml) for a complete example manifest.
-
 ## Command Line Parameters
 
 | Parameter | Type | Default | Description |

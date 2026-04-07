@@ -668,9 +668,12 @@ def _normalize_path_value(path_value: Optional[str]) -> Optional[str]:
 
 
 def _validate_tls_file_path(path: str, description: str) -> str:
-    """Validate that a configured TLS file path exists."""
+    """Validate that a configured TLS file path exists and is readable."""
     if not os.path.isfile(path):
         raise ConfigurationError(f'{description} file does not exist or is not a file: {path}')
+
+    if not os.access(path, os.R_OK):
+        raise ConfigurationError(f'{description} file is not readable: {path}')
 
     return path
 
