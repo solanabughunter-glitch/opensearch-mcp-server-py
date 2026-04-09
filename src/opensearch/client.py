@@ -13,8 +13,9 @@ import importlib.metadata
 import logging
 import os
 from contextlib import asynccontextmanager
+from http.client import HTTP_PORT, HTTPS_PORT
 from typing import Any, AsyncIterator, Dict, Optional
-from urllib.parse import urlparse
+from urllib.parse import ParseResult, urlparse, urlunparse
 
 from mcp.server.lowlevel.server import request_ctx
 from starlette.requests import Request
@@ -38,6 +39,8 @@ try:
 except importlib.metadata.PackageNotFoundError:
     _VERSION = 'unknown'
 USER_AGENT = f'opensearch-mcp-server-py/{_VERSION}'
+# opensearch-py uses 9200 when the URL has no port; http/https must use RFC defaults.
+_DEFAULT_PORTS_BY_SCHEME: dict[str, int] = {'http': HTTP_PORT, 'https': HTTPS_PORT}
 
 
 # Import custom connection classes and exceptions
@@ -58,30 +61,6 @@ class ConfigurationError(OpenSearchClientError):
     """Exception raised when configuration is invalid."""
 
     pass
-
-
-def _log_connection_event(
-    auth_method: str,
-    datasource_type: str,
-    opensearch_url: str,
-    error: str,
-) -> None:
-    """Emit a structured error log event for failed datasource connections.
-
-    Only logs failures because AsyncOpenSearch() construction does not
-    actually connect — a "success" event would be misleading.
-    """
-    logger.error(
-        f'Datasource connection failed: {auth_method} ({datasource_type})',
-        extra={
-            'event_type': 'datasource_connection',
-            'auth_method': auth_method,
-            'datasource_type': datasource_type,
-            'status': 'error',
-            'opensearch_url': opensearch_url,
-            'error': error,
-        },
-    )
 
 
 # Public API Functions
@@ -169,6 +148,55 @@ async def get_opensearch_client(args: baseToolArgs) -> AsyncIterator[AsyncOpenSe
 
 
 # Private Implementation Functions
+def _netloc_with_explicit_port(parsed: ParseResult, port: int) -> str:
+    host = parsed.hostname
+    if not host:
+        return parsed.netloc
+    host_literal = f'[{host}]' if ':' in host and not host.startswith('[') else host
+    if parsed.username is not None:
+        userinfo = parsed.username
+        if parsed.password is not None:
+            userinfo = f'{userinfo}:{parsed.password}'
+        return f'{userinfo}@{host_literal}:{port}'
+    return f'{host_literal}:{port}'
+
+
+def _parsed_with_default_ports(parsed: ParseResult) -> tuple[str, ParseResult]:
+    """Return ``(url, parsed)`` with :80/:443 in netloc when http(s) omits a port."""
+    if parsed.port is not None:
+        return urlunparse(parsed), parsed
+    port = _DEFAULT_PORTS_BY_SCHEME.get(parsed.scheme)
+    if port is None or not parsed.hostname:
+        return urlunparse(parsed), parsed
+    new_netloc = _netloc_with_explicit_port(parsed, port)
+    new_parsed = parsed._replace(netloc=new_netloc)
+    return urlunparse(new_parsed), new_parsed
+
+
+def _log_connection_event(
+    auth_method: str,
+    datasource_type: str,
+    opensearch_url: str,
+    error: str,
+) -> None:
+    """Emit a structured error log event for failed datasource connections.
+
+    Only logs failures because AsyncOpenSearch() construction does not
+    actually connect — a "success" event would be misleading.
+    """
+    logger.error(
+        f'Datasource connection failed: {auth_method} ({datasource_type})',
+        extra={
+            'event_type': 'datasource_connection',
+            'auth_method': auth_method,
+            'datasource_type': datasource_type,
+            'status': 'error',
+            'opensearch_url': opensearch_url,
+            'error': error,
+        },
+    )
+
+
 def _initialize_client_single_mode() -> AsyncOpenSearch:
     """Initialize OpenSearch client for single mode using environment variables.
 
@@ -486,11 +514,12 @@ def _create_opensearch_client(
 
     opensearch_url = opensearch_url.strip()
 
-    # Validate URL format
+    # Parse and validate; only when scheme is http/https and no port is given, append port.
     try:
         parsed_url = urlparse(opensearch_url)
         if not parsed_url.scheme or not parsed_url.netloc:
             raise ValueError('Invalid URL format')
+        opensearch_url, parsed_url = _parsed_with_default_ports(parsed_url)
     except Exception as e:
         raise ConfigurationError(f'Invalid OpenSearch URL format: {opensearch_url}. Error: {e}')
 
@@ -529,7 +558,7 @@ def _create_opensearch_client(
         'headers': {'user-agent': USER_AGENT},
     }
     client_kwargs.update(tls_config)
-    
+
     if response_size_limit is not None:
         logger.info(
             f'Configuring OpenSearch client with max_response_size={response_size_limit} bytes'
@@ -562,7 +591,9 @@ def _create_opensearch_client(
                 client_kwargs['headers'] = {'Authorization': bearer_auth_header}
                 return AsyncOpenSearch(**client_kwargs)
             except Exception as e:
-                _log_connection_event('header_auth_bearer', datasource_type, opensearch_url, str(e))
+                _log_connection_event(
+                    'header_auth_bearer', datasource_type, opensearch_url, str(e)
+                )
                 raise AuthenticationError(
                     f'Failed to authenticate with Authorization Bearer header: {e}'
                 )
@@ -860,7 +891,7 @@ def _get_auth_from_headers() -> Dict[str, Optional[str]]:
                 )
                 result['aws_session_token'] = headers.get('aws-session-token', '').strip() or None
                 result['aws_service_name'] = headers.get('aws-service-name', '').strip() or None
-                
+
                 # Extract auth from Authorization header
                 auth_header = headers.get('authorization', '').strip()
                 if auth_header:
@@ -871,11 +902,12 @@ def _get_auth_from_headers() -> Dict[str, Optional[str]]:
                             result['bearer_auth_header'] = f'Bearer {token}'
                     elif auth_header_lower.startswith('basic '):
                         import base64
+
                         # Extract the base64 encoded credentials
                         encoded_credentials = auth_header[6:]  # Skip 'Basic '
                         decoded_bytes = base64.b64decode(encoded_credentials)
                         decoded_credentials = decoded_bytes.decode('utf-8')
-                        
+
                         # Split into username and password
                         if ':' in decoded_credentials:
                             username, password = decoded_credentials.split(':', 1)

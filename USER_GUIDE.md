@@ -470,6 +470,18 @@ python -m mcp_server_opensearch --mode multi
 
 ### Connection & Authentication Variables
 
+`OPENSEARCH_URL` (and each cluster’s `opensearch_url` in multi-cluster YAML) must include a scheme (`http://` or `https://`). The TCP port used is determined as follows:
+
+| Example URL | Port in the URL? | TCP port used |
+|---------------|------------------|---------------|
+| `https://cluster.example.com` | Omitted | **443** (HTTPS default) |
+| `http://cluster.example.com` | Omitted | **80** (HTTP default) |
+| `https://cluster.example.com:9200` | Set to `9200` | **9200** |
+| `http://localhost:9200` | Set to `9200` | **9200** |
+| `https://cluster.example.com:9443` | Set to `9443` (or any other value) | **Same as in the URL** |
+
+If the port is omitted, this server inserts the usual HTTP(S) default so traffic does not fall back to the OpenSearch Python client’s implicit **9200** (Elasticsearch-style default when no port appears in the string). For a typical local OpenSearch process listening on 9200, set the URL to `http://localhost:9200` (or another host) **with `:9200` explicitly**.
+
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `OPENSEARCH_URL` | Yes* | `''` | OpenSearch cluster endpoint URL |
