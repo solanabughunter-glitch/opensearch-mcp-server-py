@@ -1,8 +1,7 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-"""
-OpenSearch client initialization module.
+"""OpenSearch client initialization module.
 
 This module provides functions to initialize OpenSearch clients with different
 authentication methods and connection modes (single vs multi-cluster).
@@ -12,19 +11,23 @@ import boto3
 import importlib.metadata
 import logging
 import os
+from .connection import (
+    DEFAULT_MAX_RESPONSE_SIZE,
+    BufferedAsyncHttpConnection,
+    OpenSearchClientError,
+)
+from botocore.credentials import Credentials
 from contextlib import asynccontextmanager
 from http.client import HTTP_PORT, HTTPS_PORT
-from typing import Any, AsyncIterator, Dict, Optional
-from urllib.parse import ParseResult, urlparse, urlunparse
-
 from mcp.server.lowlevel.server import request_ctx
-from starlette.requests import Request
-
 from mcp_server_opensearch.clusters_information import ClusterInfo, get_cluster
 from mcp_server_opensearch.global_state import get_mode, get_profile
 from opensearchpy import AsyncOpenSearch, AWSV4SignerAsyncAuth
+from starlette.requests import Request
 from tools.tool_params import baseToolArgs
-from botocore.credentials import Credentials
+from typing import Any, AsyncIterator, Dict, Optional
+from urllib.parse import ParseResult, urlparse, urlunparse
+
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -41,14 +44,6 @@ except importlib.metadata.PackageNotFoundError:
 USER_AGENT = f'opensearch-mcp-server-py/{_VERSION}'
 # opensearch-py uses 9200 when the URL has no port; http/https must use RFC defaults.
 _DEFAULT_PORTS_BY_SCHEME: dict[str, int] = {'http': HTTP_PORT, 'https': HTTPS_PORT}
-
-
-# Import custom connection classes and exceptions
-from .connection import (
-    BufferedAsyncHttpConnection,
-    OpenSearchClientError,
-    DEFAULT_MAX_RESPONSE_SIZE,
-)
 
 
 class AuthenticationError(OpenSearchClientError):
@@ -819,7 +814,6 @@ def get_aws_region_multi_mode(cluster_info: ClusterInfo) -> Optional[str]:
         Optional[str]: AWS region, or None if not available (acceptable for basic auth/no auth)
 
     """
-
     try:
         # Try cluster-specific region first
         if cluster_info.aws_region and cluster_info.aws_region.strip():
