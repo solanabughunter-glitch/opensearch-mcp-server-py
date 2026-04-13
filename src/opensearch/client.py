@@ -203,7 +203,10 @@ def _initialize_client_single_mode() -> AsyncOpenSearch:
         opensearch_timeout_str = os.getenv('OPENSEARCH_TIMEOUT', '').strip()
         opensearch_timeout = int(opensearch_timeout_str) if opensearch_timeout_str else None
         ssl_verify = os.getenv('OPENSEARCH_SSL_VERIFY', 'true').lower() != 'false'
-        
+        opensearch_ca_cert_path = _get_env_path('OPENSEARCH_CA_CERT_PATH')
+        opensearch_client_cert_path = _get_env_path('OPENSEARCH_CLIENT_CERT_PATH')
+        opensearch_client_key_path = _get_env_path('OPENSEARCH_CLIENT_KEY_PATH')
+
         # Parse max response size from environment
         max_response_size_str = os.getenv('OPENSEARCH_MAX_RESPONSE_SIZE', '').strip()
         max_response_size = None
@@ -284,6 +287,9 @@ def _initialize_client_single_mode() -> AsyncOpenSearch:
             aws_session_token=aws_session_token,
             max_response_size=max_response_size,
             bearer_auth_header=bearer_auth_header,
+            opensearch_ca_cert_path=opensearch_ca_cert_path,
+            opensearch_client_cert_path=opensearch_client_cert_path,
+            opensearch_client_key_path=opensearch_client_key_path,
         )
 
     except (ConfigurationError, AuthenticationError):
@@ -329,7 +335,14 @@ def _initialize_client_multi_mode(cluster_info: ClusterInfo) -> AsyncOpenSearch:
         ssl_verify = True  # Default to secure
         if cluster_info.ssl_verify is not None:
             ssl_verify = cluster_info.ssl_verify
-        
+        opensearch_ca_cert_path = _normalize_path_value(cluster_info.opensearch_ca_cert_path)
+        opensearch_client_cert_path = _normalize_path_value(
+            cluster_info.opensearch_client_cert_path
+        )
+        opensearch_client_key_path = _normalize_path_value(
+            cluster_info.opensearch_client_key_path
+        )
+
         # Get max response size from cluster config, fallback to environment variable
         max_response_size = cluster_info.max_response_size
         if max_response_size is None:
@@ -398,6 +411,9 @@ def _initialize_client_multi_mode(cluster_info: ClusterInfo) -> AsyncOpenSearch:
             aws_session_token=aws_session_token,
             max_response_size=max_response_size,
             bearer_auth_header=bearer_auth_header,
+            opensearch_ca_cert_path=opensearch_ca_cert_path,
+            opensearch_client_cert_path=opensearch_client_cert_path,
+            opensearch_client_key_path=opensearch_client_key_path,
         )
 
     except (ConfigurationError, AuthenticationError):
@@ -427,6 +443,9 @@ def _create_opensearch_client(
     aws_session_token: Optional[str] = None,
     max_response_size: Optional[int] = None,
     bearer_auth_header: Optional[str] = None,
+    opensearch_ca_cert_path: Optional[str] = None,
+    opensearch_client_cert_path: Optional[str] = None,
+    opensearch_client_key_path: Optional[str] = None,
 ) -> AsyncOpenSearch:
     """Common function to create OpenSearch client with authentication.
 
@@ -449,6 +468,9 @@ def _create_opensearch_client(
         aws_session_token: AWS session token from headers (optional)
         max_response_size: Maximum response size in bytes (None means no limit)
         bearer_auth_header: Authorization Bearer header value (optional)
+        opensearch_ca_cert_path: Path to the CA certificate bundle for verifying TLS
+        opensearch_client_cert_path: Path to the client certificate for mTLS
+        opensearch_client_key_path: Path to the client private key for mTLS
 
     Returns:
         OpenSearch: An initialized OpenSearch client instance
@@ -489,6 +511,12 @@ def _create_opensearch_client(
     response_size_limit = (
         max_response_size if max_response_size is not None else DEFAULT_MAX_RESPONSE_SIZE
     )
+    tls_config = _build_tls_kwargs(
+        ssl_verify=ssl_verify,
+        opensearch_ca_cert_path=opensearch_ca_cert_path,
+        opensearch_client_cert_path=opensearch_client_cert_path,
+        opensearch_client_key_path=opensearch_client_key_path,
+    )
 
     # Build client configuration with buffered connection
     client_kwargs: Dict[str, Any] = {
@@ -500,6 +528,7 @@ def _create_opensearch_client(
         'max_response_size': response_size_limit,
         'headers': {'user-agent': USER_AGENT},
     }
+    client_kwargs.update(tls_config)
     
     if response_size_limit is not None:
         logger.info(
@@ -626,6 +655,70 @@ def _create_opensearch_client(
 
     # This should never be reached, but just in case
     raise AuthenticationError('No valid authentication method provided for OpenSearch')
+
+
+def _get_env_path(env_var_name: str) -> Optional[str]:
+    """Return a normalized path value from the environment."""
+    return _normalize_path_value(os.getenv(env_var_name, ''))
+
+
+def _normalize_path_value(path_value: Optional[str]) -> Optional[str]:
+    """Normalize a configured filesystem path, treating blank values as unset."""
+    if path_value is None:
+        return None
+
+    normalized_path = path_value.strip()
+    if not normalized_path:
+        return None
+
+    return normalized_path
+
+
+def _validate_tls_file_path(path: str, description: str) -> str:
+    """Validate that a configured TLS file path exists and is readable."""
+    if not os.path.isfile(path):
+        raise ConfigurationError(f'{description} file does not exist or is not a file: {path}')
+
+    if not os.access(path, os.R_OK):
+        raise ConfigurationError(f'{description} file is not readable: {path}')
+
+    return path
+
+
+def _build_tls_kwargs(
+    ssl_verify: bool,
+    opensearch_ca_cert_path: Optional[str] = None,
+    opensearch_client_cert_path: Optional[str] = None,
+    opensearch_client_key_path: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Build TLS-related OpenSearch client kwargs from configured certificate paths."""
+    tls_kwargs: Dict[str, Any] = {}
+    has_client_cert = opensearch_client_cert_path is not None
+    has_client_key = opensearch_client_key_path is not None
+
+    if has_client_cert != has_client_key:
+        raise ConfigurationError(
+            'OpenSearch mTLS requires both client certificate and client key paths to be set'
+        )
+
+    if opensearch_ca_cert_path is not None:
+        tls_kwargs['ca_certs'] = _validate_tls_file_path(
+            opensearch_ca_cert_path, 'OpenSearch CA certificate'
+        )
+
+    if has_client_cert and has_client_key:
+        tls_kwargs['client_cert'] = _validate_tls_file_path(
+            opensearch_client_cert_path, 'OpenSearch client certificate'
+        )
+        tls_kwargs['client_key'] = _validate_tls_file_path(
+            opensearch_client_key_path, 'OpenSearch client key'
+        )
+        if not ssl_verify and 'ca_certs' not in tls_kwargs:
+            logger.warning(
+                'OpenSearch mTLS is configured with SSL verification disabled and no CA bundle'
+            )
+
+    return tls_kwargs
 
 
 def get_aws_region_single_mode() -> Optional[str]:

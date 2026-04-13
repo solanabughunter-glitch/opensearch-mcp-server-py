@@ -19,7 +19,9 @@
 - Support for both stdio and streaming server transports (SSE and Streamable HTTP)
 - Built-in tools for common OpenSearch operations
 - Easy integration with Claude Desktop and LangChain
-- Secure authentication using basic auth or IAM roles
+- Secure authentication using basic auth, IAM roles, header-based auth, and OpenSearch mTLS
+
+For detailed setup, including Kubernetes deployment and mTLS configuration, see the [User Guide](USER_GUIDE.md).
 
 ## Installing opensearch-mcp-server-py
 

@@ -3,6 +3,8 @@
 
 import boto3
 import os
+import tempfile
+
 import pytest
 from opensearch.client import initialize_client, ConfigurationError, AuthenticationError, BufferedAsyncHttpConnection
 from opensearchpy import AsyncOpenSearch, AsyncHttpConnection, AWSV4SignerAsyncAuth
@@ -22,6 +24,9 @@ class TestOpenSearchClient:
             'OPENSEARCH_URL',
             'OPENSEARCH_NO_AUTH',
             'OPENSEARCH_SSL_VERIFY',
+            'OPENSEARCH_CA_CERT_PATH',
+            'OPENSEARCH_CLIENT_CERT_PATH',
+            'OPENSEARCH_CLIENT_KEY_PATH',
             'OPENSEARCH_TIMEOUT',
             'AWS_IAM_ARN',
             'AWS_ACCESS_KEY_ID',
@@ -30,25 +35,6 @@ class TestOpenSearchClient:
         ]:
             if key in os.environ:
                 self.original_env[key] = os.environ[key]
-                del os.environ[key]
-
-    def setup_method(self):
-        """Setup before each test method."""
-        # Clear environment variables to ensure clean test state
-        for key in [
-            'OPENSEARCH_USERNAME',
-            'OPENSEARCH_PASSWORD',
-            'AWS_REGION',
-            'OPENSEARCH_URL',
-            'OPENSEARCH_NO_AUTH',
-            'OPENSEARCH_SSL_VERIFY',
-            'OPENSEARCH_TIMEOUT',
-            'AWS_IAM_ARN',
-            'AWS_ACCESS_KEY_ID',
-            'AWS_SECRET_ACCESS_KEY',
-            'AWS_SESSION_TOKEN',
-        ]:
-            if key in os.environ:
                 del os.environ[key]
 
         # Set global mode for tests
@@ -211,6 +197,47 @@ class TestOpenSearchClient:
         assert call_kwargs['headers']['user-agent'].startswith('opensearch-mcp-server-py/')
         assert 'http_auth' not in call_kwargs
 
+    @patch('opensearch.client.AsyncOpenSearch')
+    @patch('opensearch.client.get_aws_region_single_mode')
+    def test_initialize_client_basic_auth_with_mtls(self, mock_get_region, mock_opensearch):
+        """Test client initialization with CA, client cert, and client key."""
+        with (
+            tempfile.NamedTemporaryFile() as ca_file,
+            tempfile.NamedTemporaryFile() as cert_file,
+            tempfile.NamedTemporaryFile() as key_file,
+        ):
+            os.environ['OPENSEARCH_USERNAME'] = 'test-user'
+            os.environ['OPENSEARCH_PASSWORD'] = 'test-password'
+            os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
+            os.environ['OPENSEARCH_CA_CERT_PATH'] = ca_file.name
+            os.environ['OPENSEARCH_CLIENT_CERT_PATH'] = cert_file.name
+            os.environ['OPENSEARCH_CLIENT_KEY_PATH'] = key_file.name
+
+            mock_get_region.return_value = 'us-east-1'
+            mock_client = Mock()
+            mock_opensearch.return_value = mock_client
+
+            client = initialize_client(baseToolArgs(opensearch_cluster_name=''))
+
+            assert client == mock_client
+            call_kwargs = mock_opensearch.call_args[1]
+            assert call_kwargs['ca_certs'] == ca_file.name
+            assert call_kwargs['client_cert'] == cert_file.name
+            assert call_kwargs['client_key'] == key_file.name
+            assert call_kwargs['http_auth'] == ('test-user', 'test-password')
+
+    def test_initialize_client_rejects_partial_mtls_env_config(self):
+        """Test that partial mTLS configuration is rejected in single mode."""
+        with tempfile.NamedTemporaryFile() as cert_file:
+            os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
+            os.environ['OPENSEARCH_NO_AUTH'] = 'true'
+            os.environ['OPENSEARCH_CLIENT_CERT_PATH'] = cert_file.name
+
+            with pytest.raises(ConfigurationError) as exc_info:
+                initialize_client(baseToolArgs(opensearch_cluster_name=''))
+
+        assert 'requires both client certificate and client key paths' in str(exc_info.value)
+
     @patch('opensearch.client._initialize_client_single_mode')
     def test_initialize_client_with_timeout_env(self, mock_init):
         """Test client initialization with timeout from environment."""
@@ -280,6 +307,40 @@ class TestOpenSearchClient:
         assert call_kwargs['max_response_size'] is None  # No limit by default
         # Should not have http_auth when no-auth is True
         assert 'http_auth' not in call_kwargs
+
+    @patch('opensearch.client.AsyncOpenSearch')
+    @patch('opensearch.client.get_aws_region_multi_mode')
+    def test__initialize_client_multi_mode_with_mtls(self, mock_get_region, mock_opensearch):
+        """Test client initialization with mTLS paths from cluster config."""
+        from mcp_server_opensearch.clusters_information import ClusterInfo
+        from opensearch.client import _initialize_client_multi_mode
+
+        with (
+            tempfile.NamedTemporaryFile() as ca_file,
+            tempfile.NamedTemporaryFile() as cert_file,
+            tempfile.NamedTemporaryFile() as key_file,
+        ):
+            cluster_info = ClusterInfo(
+                opensearch_url='https://localhost:9200',
+                opensearch_username='admin',
+                opensearch_password='password',
+                opensearch_ca_cert_path=ca_file.name,
+                opensearch_client_cert_path=cert_file.name,
+                opensearch_client_key_path=key_file.name,
+            )
+
+            mock_get_region.return_value = 'us-east-1'
+            mock_client = Mock()
+            mock_opensearch.return_value = mock_client
+
+            client = _initialize_client_multi_mode(cluster_info)
+
+            assert client == mock_client
+            call_kwargs = mock_opensearch.call_args[1]
+            assert call_kwargs['ca_certs'] == ca_file.name
+            assert call_kwargs['client_cert'] == cert_file.name
+            assert call_kwargs['client_key'] == key_file.name
+            assert call_kwargs['http_auth'] == ('admin', 'password')
 
     @patch('opensearch.client.AsyncOpenSearch')
     @patch('opensearch.client.get_aws_region_multi_mode')
@@ -365,6 +426,9 @@ class TestOpenSearchClientContextManager:
             'OPENSEARCH_URL',
             'OPENSEARCH_NO_AUTH',
             'OPENSEARCH_SSL_VERIFY',
+            'OPENSEARCH_CA_CERT_PATH',
+            'OPENSEARCH_CLIENT_CERT_PATH',
+            'OPENSEARCH_CLIENT_KEY_PATH',
             'OPENSEARCH_TIMEOUT',
             'AWS_IAM_ARN',
             'AWS_ACCESS_KEY_ID',
