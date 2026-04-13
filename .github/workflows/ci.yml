@@ -6,7 +6,7 @@ on:
       - 'main'
       - '[0-9]+.[0-9]+'
       - '[0-9]+.x'
-  pull_request:
+  pull_request_target:
 
 permissions:
   id-token: write
@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   test:
+    if: github.repository == 'opensearch-project/opensearch-mcp-server-py'
     name: Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -39,9 +40,10 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Configure AWS credentials
-        if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
         id: aws-creds
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -126,11 +128,9 @@ jobs:
         run: pip show opensearch-mcp-server-py
 
       - name: Install integration test dependencies
-        if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
         run: pip install pytest-asyncio pytest-timeout "httpx[http2]"
 
       - name: Run integration tests
-        if: github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push'
         env:
           IT_AWS_ACCESS_KEY_ID: ${{ steps.aws-creds.outputs.aws-access-key-id }}
           IT_AWS_SECRET_ACCESS_KEY: ${{ steps.aws-creds.outputs.aws-secret-access-key }}
