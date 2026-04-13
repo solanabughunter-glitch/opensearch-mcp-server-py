@@ -9,6 +9,7 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add OpenSearch mTLS support for single-cluster and multi-cluster configurations, including CA bundle, client certificate, and client key settings
 
 ### Fixed
+- Switch CI from `pull_request` to `pull_request_target` so integration tests run on fork PRs ([#219](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/219))
 
 ### Removed
 
