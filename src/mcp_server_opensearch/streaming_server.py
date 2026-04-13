@@ -8,7 +8,7 @@ import contextlib
 from typing import AsyncIterator
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
-from mcp.types import TextContent, Tool
+from mcp.types import TextContent, Tool, ToolAnnotations
 from mcp_server_opensearch.clusters_information import load_clusters_from_yaml
 from mcp_server_opensearch.global_state import set_mode, set_profile, set_config_file_path
 from starlette.applications import Starlette
@@ -21,6 +21,7 @@ from starlette.types import Scope, Receive, Send
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from tools.tools import TOOL_REGISTRY
 from tools.config import apply_custom_tool_config
+from tools.utils import is_read_only_tool
 
 
 async def create_mcp_server(
@@ -66,6 +67,7 @@ async def create_mcp_server(
                     name=tool_info.get('display_name', tool_name),
                     description=tool_info['description'],
                     inputSchema=tool_info['input_schema'],
+                    annotations=ToolAnnotations(readOnlyHint=is_read_only_tool(tool_info)),
                 )
             )
         return tools
