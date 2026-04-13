@@ -359,10 +359,10 @@ The tool will be automatically available through the MCP server after registrati
 
 ## Testing
 
-### Running Tests
+### Running Unit Tests
 
 ```bash
-# Run all tests
+# Run all unit tests
 uv run pytest
 
 # Run tests with coverage
@@ -374,6 +374,36 @@ uv run pytest tests/test_tools.py
 # Run tests with verbose output
 uv run pytest -v
 ```
+
+### Running Integration Tests Locally
+
+Integration tests run against a real OpenSearch cluster. Set the following environment variables, then run:
+
+```bash
+# Required — OpenSearch cluster endpoint and basic auth credentials
+export IT_OPENSEARCH_URL="https://your-opensearch-endpoint"
+export IT_BASIC_AUTH_USERNAME="admin"
+export IT_BASIC_AUTH_PASSWORD="your-password"
+
+# Required for AWS auth tests — temporary AWS credentials
+export IT_AWS_ACCESS_KEY_ID="your-access-key"
+export IT_AWS_SECRET_ACCESS_KEY="your-secret-key"
+export IT_AWS_SESSION_TOKEN="your-session-token"
+export IT_AWS_REGION="us-west-2"
+
+# Required for IAM role assumption tests
+export IT_IAM_ROLE_ARN="arn:aws:iam::123456789012:role/your-role"
+
+# Optional — custom test index name (defaults to mcp-integration-test)
+export IT_TEST_INDEX="my-test-index"
+
+# Install the package and IT dependencies, then run
+pip install dist/*.whl
+pip install pytest-asyncio pytest-timeout "httpx[http2]"
+python -m pytest integration_tests/ -v --tb=short --timeout=300
+```
+
+Tests that require missing environment variables will be automatically skipped.
 
 ### Code Quality
 

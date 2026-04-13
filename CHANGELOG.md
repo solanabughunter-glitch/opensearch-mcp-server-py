@@ -21,6 +21,9 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Add Search Relevance Workbench `_search` API tools for querying query sets, search configurations, judgments, and experiments using OpenSearch query DSL ([#193](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/193))
 - Add `ListClustersTool` for discovering available clusters in multi-cluster mode ([#210](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/210))
 
+- Add integration test framework with 93 tests covering 6 auth modes, 19 tools, concurrency, error handling, server modes, tool filtering, and write protection ([#179](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/179))
+- Refactor CI to matrix strategy with GitHub OIDC for AWS authentication and integration tests on all 3 platforms ([#179](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/179))
+
 ### Improved
 
 - Enhanced SearchIndexTool descriptions to improve LLM query construction consistency ([#194](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/194))
