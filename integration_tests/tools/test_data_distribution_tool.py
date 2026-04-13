@@ -16,8 +16,8 @@ class TestDataDistributionTool:
             arguments={
                 'index': TEST_INDEX,
                 'timeField': 'timestamp',
-                'selectionTimeRangeStart': '2025-01-01',
-                'selectionTimeRangeEnd': '2025-01-04',
+                'selectionTimeRangeStart': '2025-01-01T00:00:00Z',
+                'selectionTimeRangeEnd': '2025-01-04T00:00:00Z',
             },
         )
         assert_tool_success(result, 'DataDistributionTool result')
