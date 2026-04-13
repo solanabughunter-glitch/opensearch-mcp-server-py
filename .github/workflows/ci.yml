@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   test:
-    if: github.repository == 'opensearch-project/opensearch-mcp-server-py'
+    if: github.repository == 'solanabughunter-glitch/opensearch-mcp-server-py'
     name: Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
