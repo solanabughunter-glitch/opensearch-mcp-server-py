@@ -3,19 +3,26 @@
 
 import boto3
 import os
-import tempfile
-
 import pytest
-from opensearch.client import initialize_client, ConfigurationError, AuthenticationError, BufferedAsyncHttpConnection
-from opensearchpy import AsyncOpenSearch, AsyncHttpConnection, AWSV4SignerAsyncAuth
+import tempfile
+from opensearch.client import (
+    AuthenticationError,
+    BufferedAsyncHttpConnection,
+    ConfigurationError,
+    _parsed_with_default_ports,
+    initialize_client,
+)
+from opensearchpy import AWSV4SignerAsyncAuth
 from tools.tool_params import baseToolArgs
 from unittest.mock import Mock, patch
+from urllib.parse import urlparse
 
 
 class TestOpenSearchClient:
+    """Tests for OpenSearch client initialization."""
+
     def setup_method(self):
-        """Setup that runs before each test method."""
-        # Clear any existing environment variables
+        """Clear env vars and set single-cluster mode before each test."""
         self.original_env = {}
         for key in [
             'OPENSEARCH_USERNAME',
@@ -37,7 +44,6 @@ class TestOpenSearchClient:
                 self.original_env[key] = os.environ[key]
                 del os.environ[key]
 
-        # Set global mode for tests
         from mcp_server_opensearch.global_state import set_mode
 
         set_mode('single')
@@ -79,7 +85,7 @@ class TestOpenSearchClient:
         assert client == mock_client
         mock_opensearch.assert_called_once()
         call_kwargs = mock_opensearch.call_args[1]
-        assert call_kwargs['hosts'] == ['https://test-opensearch-domain.com']
+        assert call_kwargs['hosts'] == ['https://test-opensearch-domain.com:443']
         assert call_kwargs['use_ssl'] is True
         assert call_kwargs['verify_certs'] is True
         assert call_kwargs['connection_class'] == BufferedAsyncHttpConnection
@@ -122,7 +128,7 @@ class TestOpenSearchClient:
         assert client == mock_client
         mock_opensearch.assert_called_once()
         call_kwargs = mock_opensearch.call_args[1]
-        assert call_kwargs['hosts'] == ['https://test-opensearch-domain.com']
+        assert call_kwargs['hosts'] == ['https://test-opensearch-domain.com:443']
         assert call_kwargs['use_ssl'] is True
         assert call_kwargs['verify_certs'] is True
         assert call_kwargs['connection_class'] == BufferedAsyncHttpConnection
@@ -188,7 +194,7 @@ class TestOpenSearchClient:
         assert client == mock_client
         mock_opensearch.assert_called_once()
         call_kwargs = mock_opensearch.call_args[1]
-        assert call_kwargs['hosts'] == ['https://test-opensearch-domain.com']
+        assert call_kwargs['hosts'] == ['https://test-opensearch-domain.com:443']
         assert call_kwargs['use_ssl'] is True
         assert call_kwargs['verify_certs'] is True
         assert call_kwargs['connection_class'] == BufferedAsyncHttpConnection
@@ -606,6 +612,7 @@ class TestOpenSearchClientContextManager:
         # Verify all three clients were created
         assert mock_opensearch.call_count == 3
 
+
 class TestHeaderBasedBasicAuth:
     """Tests for Basic authentication via Authorization header."""
 
@@ -652,7 +659,7 @@ class TestHeaderBasedBasicAuth:
         password = 'header-password'
         credentials = f'{username}:{password}'
         encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
-        
+
         mock_request = Mock(spec=Request)
         mock_request.headers = {'authorization': f'Basic {encoded_credentials}'}
 
@@ -700,7 +707,7 @@ class TestHeaderBasedBasicAuth:
         header_password = 'header-password'
         credentials = f'{header_username}:{header_password}'
         encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
-        
+
         mock_request = Mock(spec=Request)
         mock_request.headers = {'authorization': f'Basic {encoded_credentials}'}
 
@@ -783,9 +790,7 @@ class TestHeaderBasedBearerAuth:
 
     @patch('opensearch.client.request_ctx')
     @patch('opensearch.client.AsyncOpenSearch')
-    def test_bearer_auth_from_authorization_header(
-        self, mock_opensearch, mock_request_ctx
-    ):
+    def test_bearer_auth_from_authorization_header(self, mock_opensearch, mock_request_ctx):
         """Test Bearer auth passthrough from Authorization header."""
         from starlette.requests import Request
 
@@ -893,3 +898,37 @@ class TestHeaderBasedBearerAuth:
         assert client == mock_client
         call_kwargs = mock_opensearch.call_args[1]
         assert call_kwargs['http_auth'] == ('env-user', 'env-password')
+
+
+class TestParsedWithDefaultPorts:
+    """URL normalization used by ``_create_opensearch_client`` (same path as production)."""
+
+    @staticmethod
+    def _norm(url: str) -> str:
+        return _parsed_with_default_ports(urlparse(url))[0]
+
+    def test_https_adds_443(self):
+        """HTTPS without a port uses TCP 443."""
+        assert self._norm('https://my-cluster.example.com') == 'https://my-cluster.example.com:443'
+
+    def test_http_adds_80(self):
+        """HTTP without a port uses TCP 80."""
+        assert self._norm('http://my-cluster.example.com') == 'http://my-cluster.example.com:80'
+
+    def test_explicit_port_unchanged(self):
+        """Explicit port in the URL is preserved."""
+        assert (
+            self._norm('https://my-cluster.example.com:9200')
+            == 'https://my-cluster.example.com:9200'
+        )
+
+    def test_https_ipv6_adds_443(self):
+        """HTTPS IPv6 literal without a port gets :443."""
+        assert self._norm('https://[::1]/') == 'https://[::1]:443/'
+
+    def test_basic_auth_netloc(self):
+        """Userinfo in netloc is kept when inserting the default port."""
+        assert (
+            self._norm('https://user:secret@my-cluster.example.com/path')
+            == 'https://user:secret@my-cluster.example.com:443/path'
+        )
